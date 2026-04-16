@@ -1,41 +1,83 @@
-# Prerequisites
-*.d
+# Build folders
+/build/
+/Build/
+/build-*/
+/cmake-build-*/
+/out/
+/bin/
+/lib/
 
-# Compiled Object files
-*.slo
-*.lo
+# CMake
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+compile_commands.json
+Makefile
+CTestTestfile.cmake
+Testing/
+install_manifest.txt
+CMakeUserPresets.json
+
+# Qt Creator
+*.pro.user
+*.pro.user.*
+*.qbs.user
+*.qtc_clangd/
+
+# Qt generated files
+/ui_*.h
+moc_*.cpp
+moc_*.h
+qrc_*.cpp
+*.moc
+
+# Autogen
+*.autogen/
+*_autogen/
+moc_predefs.h
+
+# Object / binary files
 *.o
 *.obj
-
-# Precompiled Headers
-*.gch
-*.pch
-
-# Linker files
-*.ilk
-
-# Debugger Files
-*.pdb
-
-# Compiled Dynamic libraries
-*.so
-*.dylib
-*.dll
-
-# Fortran module files
-*.mod
-*.smod
-
-# Compiled Static libraries
-*.lai
+*.lo
 *.la
-*.a
-*.lib
-
-# Executables
+*.al
+*.dll
+*.so
+*.so.*
+*.dylib
 *.exe
 *.out
 *.app
+*.a
+*.lib
 
-# debug information files
-*.dwo
+# Debug / Release folders
+/debug/
+/Debug/
+/release/
+/Release/
+
+# Logs
+*.log
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# IDEs
+.vs/
+.vscode/
+.idea/
+
+# macOS app bundles
+*.app/
+
+# Windows pdb / incremental linker
+*.pdb
+*.ilk
+
+# Linux core dump
+core
+core.*
+CMakePresets.json
