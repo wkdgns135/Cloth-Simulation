@@ -77,7 +77,5 @@ Thumbs.db
 *.pdb
 *.ilk
 
-# Linux core dump
-core
-core.*
 CMakePresets.json
+CMakeLists.txt.DotSettings.user
