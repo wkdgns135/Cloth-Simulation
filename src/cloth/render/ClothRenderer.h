@@ -18,6 +18,8 @@ public:
 	void render();
 
 	void set_particles(const std::vector<glm::vec3>& positions);
+	void set_indices(const std::vector<unsigned int>& indices);
+	bool has_indices() const { return index_count_ > 0; }
 
 private:
 	void setup_shaders();
@@ -25,7 +27,9 @@ private:
 private:
 	QOpenGLShaderProgram program_;
 	QOpenGLBuffer vbo_;
+	QOpenGLBuffer ebo_;
 	QOpenGLVertexArrayObject vao_;
 
 	std::vector<glm::vec3> positions_;
+	GLsizei index_count_ = 0;
 };

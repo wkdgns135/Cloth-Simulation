@@ -5,6 +5,7 @@
 
 ClothRenderer::ClothRenderer()
 	: vbo_(QOpenGLBuffer::VertexBuffer)
+	, ebo_(QOpenGLBuffer::IndexBuffer)
 {
 }
 
@@ -12,6 +13,7 @@ ClothRenderer::~ClothRenderer()
 {
 	vao_.destroy();
 	vbo_.destroy();
+	ebo_.destroy();
 	program_.removeAllShaders();
 }
 
@@ -33,6 +35,8 @@ void ClothRenderer::initialize()
 	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(glm::vec3), nullptr);
 	glEnableVertexAttribArray(0);
 
+	ebo_.create();
+
 	vbo_.release();
 	vao_.release();
 }
@@ -47,11 +51,12 @@ void ClothRenderer::render()
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 	if (positions_.empty()) return;
+	if (index_count_ == 0) return;
 
 	program_.bind();
 	vao_.bind();
 
-	glDrawArrays(GL_POINTS, 0, static_cast<GLsizei>(positions_.size()));
+	glDrawElements(GL_TRIANGLES, index_count_, GL_UNSIGNED_INT, nullptr);
 
 	vao_.release();
 	program_.release();
@@ -108,5 +113,19 @@ void ClothRenderer::set_particles(const std::vector<glm::vec3>& positions)
 	vbo_.allocate(positions_.data(), static_cast<int>(positions_.size() * sizeof(glm::vec3)));
 
 	vbo_.release();
+	vao_.release();
+}
+
+void ClothRenderer::set_indices(const std::vector<unsigned int>& indices)
+{
+	if (!vao_.isCreated() || !ebo_.isCreated()) return;
+
+	index_count_ = static_cast<GLsizei>(indices.size());
+
+	vao_.bind();
+
+	ebo_.bind();
+	ebo_.allocate(indices.data(), static_cast<int>(indices.size() * sizeof(unsigned int)));
+
 	vao_.release();
 }

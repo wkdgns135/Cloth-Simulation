@@ -18,6 +18,7 @@ public:
 	const std::vector<Particle>& get_particles() const;
 	std::vector<Particle>& get_particles();
 	std::vector<glm::vec3> get_positions() const;
+	const std::vector<unsigned int>& get_indices() const;
 
 	int get_width() const { return width_; }
 	int get_height() const { return height_; }
@@ -31,4 +32,5 @@ private:
 	float spacing_ = 0.0f;
 
 	std::vector<Particle> particles_;
+	std::vector<unsigned int> indices_;
 };

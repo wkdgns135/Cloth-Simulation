@@ -38,6 +38,14 @@ void ClothRenderSystem::render()
 		return;
 	}
 
+	if (!renderer_->has_indices())
+	{
+		if (const std::vector<unsigned int>* indices = world_.get_indices())
+		{
+			renderer_->set_indices(*indices);
+		}
+	}
+
 	ClothRenderData render_data;
 	if (world_.consume_render_data(render_data))
 	{

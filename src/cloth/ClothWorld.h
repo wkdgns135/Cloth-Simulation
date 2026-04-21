@@ -1,6 +1,7 @@
 #pragma once
 
 #include <mutex>
+#include <vector>
 
 #include "cloth/core/Cloth.h"
 #include "cloth/physics/ClothSimulator.h"
@@ -13,6 +14,7 @@ public:
 	void step_physics(ClothSimulator& simulator, float delta_time);
 	void publish_render_data();
 	bool consume_render_data(ClothRenderData& render_data);
+	const std::vector<unsigned int>* get_indices();
 
 private:
 	std::mutex cloth_mutex_;

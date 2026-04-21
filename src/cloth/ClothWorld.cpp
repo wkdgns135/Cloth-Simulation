@@ -25,16 +25,16 @@ void ClothWorld::step_physics(ClothSimulator& simulator, float delta_time)
 
 void ClothWorld::publish_render_data()
 {
-	ClothRenderData next_render_data;
+	std::vector<glm::vec3> positions;
 
 	{
 		std::lock_guard<std::mutex> lock(cloth_mutex_);
-		next_render_data.positions = cloth_.get_positions();
+		positions = cloth_.get_positions();
 	}
 
 	{
 		std::lock_guard<std::mutex> lock(render_data_mutex_);
-		render_data_ = std::move(next_render_data);
+		render_data_.positions = std::move(positions);
 		render_data_dirty_ = true;
 	}
 }
@@ -48,7 +48,19 @@ bool ClothWorld::consume_render_data(ClothRenderData& render_data)
 		return false;
 	}
 
-	render_data = render_data_;
+	render_data.positions = std::move(render_data_.positions);
 	render_data_dirty_ = false;
 	return true;
+}
+
+const std::vector<unsigned int>* ClothWorld::get_indices()
+{
+	std::lock_guard<std::mutex> lock(cloth_mutex_);
+
+	if (!initialized_)
+	{
+		return nullptr;
+	}
+
+	return &cloth_.get_indices();
 }
