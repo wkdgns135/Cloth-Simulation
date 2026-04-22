@@ -1,41 +1,26 @@
 #include "engine/Engine.h"
 
+#include "engine/core/World.h"
+#include "engine/render/RenderSystem.h"
+
 #include <chrono>
+#include <utility>
 
 namespace
 {
-constexpr float kSimulationDeltaTime = 1.0f / 60.0f;
-constexpr float kPhysicsDeltaTime = 1.0f / 60.0f;
-constexpr float kRenderDeltaTime = 1.0f / 60.0f;
-
-constexpr auto kSimulationInterval = std::chrono::milliseconds(16);
-constexpr auto kPhysicsInterval = std::chrono::milliseconds(16);
-constexpr auto kRenderInterval = std::chrono::milliseconds(16);
+constexpr float kUpdateDeltaTime = 1.0f / 60.0f;
+constexpr auto kUpdateInterval = std::chrono::milliseconds(16);
 }
 
-Engine::Engine() = default;
+Engine::Engine(World& world, RenderSystem& render_system)
+	: world_(world)
+	, render_system_(render_system)
+{
+}
 
 Engine::~Engine()
 {
 	shutdown();
-}
-
-void Engine::add_simulation_system(SimulationSystem& system)
-{
-	lifecycle_systems_.push_back(&system);
-	simulation_systems_.push_back(&system);
-}
-
-void Engine::add_physics_system(PhysicsSystem& system)
-{
-	lifecycle_systems_.push_back(&system);
-	physics_systems_.push_back(&system);
-}
-
-void Engine::add_render_system(RenderSystem& system)
-{
-	lifecycle_systems_.push_back(&system);
-	render_systems_.push_back(&system);
 }
 
 void Engine::initialize()
@@ -45,8 +30,8 @@ void Engine::initialize()
 		return;
 	}
 
-	awake_all();
-	start_all();
+	world_.awake();
+	world_.start();
 
 	initialized_ = true;
 }
@@ -63,9 +48,8 @@ void Engine::start()
 		return;
 	}
 
-	simulation_thread_ = std::thread(&Engine::run_simulation_loop, this);
-	physics_thread_ = std::thread(&Engine::run_physics_loop, this);
-	render_thread_ = std::thread(&Engine::run_render_loop, this);
+	world_.start();
+	engine_thread_ = std::thread(&Engine::run_engine_loop, this);
 }
 
 void Engine::stop()
@@ -75,22 +59,12 @@ void Engine::stop()
 		return;
 	}
 
-	if (simulation_thread_.joinable())
+	if (engine_thread_.joinable())
 	{
-		simulation_thread_.join();
+		engine_thread_.join();
 	}
 
-	if (physics_thread_.joinable())
-	{
-		physics_thread_.join();
-	}
-
-	if (render_thread_.joinable())
-	{
-		render_thread_.join();
-	}
-
-	stop_all();
+	world_.stop();
 }
 
 void Engine::shutdown()
@@ -102,74 +76,67 @@ void Engine::shutdown()
 		return;
 	}
 
-	destroy_all();
+	world_.destroy();
 
 	initialized_ = false;
 }
 
-void Engine::run_simulation_loop()
+void Engine::set_render_request_callback(RenderRequestCallback render_request_callback)
 {
-	run_loop(simulation_systems_, kSimulationDeltaTime, kSimulationInterval);
+	render_request_callback_ = std::move(render_request_callback);
 }
 
-void Engine::run_physics_loop()
+void Engine::enqueue_world_job(WorldJob job)
 {
-	run_loop(physics_systems_, kPhysicsDeltaTime, kPhysicsInterval);
+	std::lock_guard<std::mutex> lock(world_job_mutex_);
+	pending_world_jobs_.push_back(std::move(job));
 }
 
-void Engine::run_render_loop()
-{
-	run_loop(render_systems_, kRenderDeltaTime, kRenderInterval);
-}
-
-void Engine::run_loop(
-	const std::vector<Lifecycle*>& systems,
-	float delta_time,
-	std::chrono::milliseconds interval)
+void Engine::run_engine_loop()
 {
 	auto next_tick = std::chrono::steady_clock::now();
 
 	while (running_)
 	{
-		next_tick += interval;
+		next_tick += kUpdateInterval;
 
-		for (Lifecycle* system : systems)
-		{
-			system->update(delta_time);
-		}
+		tick(kUpdateDeltaTime);
 
 		std::this_thread::sleep_until(next_tick);
 	}
 }
 
-void Engine::awake_all()
+void Engine::tick(float delta_time)
 {
-	for (Lifecycle* system : lifecycle_systems_)
+	drain_world_jobs();
+	world_.update(delta_time);
+	publish_render_scene();
+
+	if (render_request_callback_)
 	{
-		system->awake();
+		render_request_callback_();
 	}
 }
 
-void Engine::start_all()
+void Engine::drain_world_jobs()
 {
-	for (Lifecycle* system : lifecycle_systems_)
+	std::vector<WorldJob> jobs;
+
 	{
-		system->start();
+		std::lock_guard<std::mutex> lock(world_job_mutex_);
+		jobs.swap(pending_world_jobs_);
+	}
+
+	for (WorldJob& job : jobs)
+	{
+		if (job)
+		{
+			job(world_);
+		}
 	}
 }
 
-void Engine::stop_all()
+void Engine::publish_render_scene()
 {
-	for (Lifecycle* system : lifecycle_systems_)
-	{
-		system->stop();
-	}
-}
-
-void Engine::destroy_all()
-{
-	for (Lifecycle* system : lifecycle_systems_)
-	{
-		system->destroy();
-	}
+	render_system_.set_scene(world_.build_render_scene());
 }

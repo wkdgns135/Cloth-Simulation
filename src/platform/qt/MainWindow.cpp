@@ -1,15 +1,16 @@
 #include "platform/qt/MainWindow.h"
 
-#include "cloth/render/ClothRenderSystem.h"
+#include "engine/Engine.h"
+#include "engine/render/RenderSystem.h"
 #include "platform/qt/ViewportWidget.h"
 
-MainWindow::MainWindow(ClothRenderSystem& render_system, QWidget* parent)
+MainWindow::MainWindow(RenderSystem& render_system, Engine& engine, QWidget* parent)
 	: QMainWindow(parent)
 {
 	resize(1280, 720);
 	setWindowTitle("PBD Cloth Simulator");
 
-	viewport_widget_ = new ViewportWidget(render_system, this);
+	viewport_widget_ = new ViewportWidget(render_system, engine, this);
 	setCentralWidget(viewport_widget_);
 }
 

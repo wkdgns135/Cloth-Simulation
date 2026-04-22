@@ -20,36 +20,43 @@ set(APP_SOURCES
 set(ENGINE_SOURCES
     src/engine/Engine.h
     src/engine/Engine.cpp
+    src/engine/core/Component.h
+    src/engine/core/Object.h
+    src/engine/core/Object.cpp
+    src/engine/core/Transform.h
+    src/engine/core/World.h
+    src/engine/core/World.cpp
     src/engine/lifecycle/Lifecycle.h
-    src/engine/physics/PhysicsSystem.h
+    src/engine/render/RenderComponent.h
+    src/engine/render/Renderer.h
+    src/engine/render/Renderer.cpp
+    src/engine/render/RenderScene.h
     src/engine/render/RenderSystem.h
-    src/engine/simulation/SimulationSystem.h
+    src/engine/render/RenderSystem.cpp
+    src/engine/simulation/SimulationComponent.h
 )
 
 set(CLOTH_SOURCES
     src/cloth/ClothWorld.h
     src/cloth/ClothWorld.cpp
+    src/cloth/ClothObject.h
+    src/cloth/ClothObject.cpp
+    src/cloth/components/ClothRenderComponent.h
+    src/cloth/components/ClothRenderComponent.cpp
+    src/cloth/components/ClothSimulationComponent.h
+    src/cloth/components/ClothSimulationComponent.cpp
+    src/cloth/components/PBDClothSimulationComponent.h
+    src/cloth/components/PBDClothSimulationComponent.cpp
+    src/cloth/components/XPBDClothSimulationComponent.h
+    src/cloth/components/XPBDClothSimulationComponent.cpp
     src/cloth/core/Particle.h
     src/cloth/core/Cloth.h
     src/cloth/core/Cloth.cpp
-    src/cloth/physics/ClothPhysicsSystem.h
-    src/cloth/physics/ClothPhysicsSystem.cpp
-    src/cloth/physics/ClothSimulator.h
-    src/cloth/physics/ClothSimulator.cpp
-    src/cloth/render/ClothRenderData.h
-    src/cloth/render/ClothRenderer.h
-    src/cloth/render/ClothRenderer.cpp
-    src/cloth/render/ClothRenderSystem.h
-    src/cloth/render/ClothRenderSystem.cpp
-    src/cloth/simulation/ClothSimulationSystem.h
-    src/cloth/simulation/ClothSimulationSystem.cpp
 )
 
 set(PLATFORM_QT_SOURCES
     src/platform/qt/MainWindow.h
     src/platform/qt/MainWindow.cpp
-    src/platform/qt/QtRenderRequestSystem.h
-    src/platform/qt/QtRenderRequestSystem.cpp
     src/platform/qt/ViewportWidget.h
     src/platform/qt/ViewportWidget.cpp
 )

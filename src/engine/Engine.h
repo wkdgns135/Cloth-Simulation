@@ -1,57 +1,48 @@
 #pragma once
 
 #include <atomic>
-#include <chrono>
+#include <functional>
+#include <mutex>
 #include <thread>
 #include <vector>
 
-#include "engine/lifecycle/Lifecycle.h"
-#include "engine/physics/PhysicsSystem.h"
-#include "engine/render/RenderSystem.h"
-#include "engine/simulation/SimulationSystem.h"
+class RenderSystem;
+class World;
 
 class Engine final
 {
 public:
-	Engine();
+	using WorldJob = std::function<void(World&)>;
+	using RenderRequestCallback = std::function<void()>;
+
+	Engine(World& world, RenderSystem& render_system);
 	~Engine();
 
 	Engine(const Engine&) = delete;
 	Engine& operator=(const Engine&) = delete;
-
-	void add_simulation_system(SimulationSystem& system);
-	void add_physics_system(PhysicsSystem& system);
-	void add_render_system(RenderSystem& system);
 
 	void initialize();
 	void start();
 	void stop();
 	void shutdown();
 
+	void set_render_request_callback(RenderRequestCallback render_request_callback);
+	void enqueue_world_job(WorldJob job);
+
 private:
-	void run_simulation_loop();
-	void run_physics_loop();
-	void run_render_loop();
+	void run_engine_loop();
+	void tick(float delta_time);
+	void drain_world_jobs();
+	void publish_render_scene();
 
-	void run_loop(
-		const std::vector<Lifecycle*>& systems,
-		float delta_time,
-		std::chrono::milliseconds interval);
-
-	void awake_all();
-	void start_all();
-	void stop_all();
-	void destroy_all();
-
-	std::vector<Lifecycle*> lifecycle_systems_;
-	std::vector<Lifecycle*> simulation_systems_;
-	std::vector<Lifecycle*> physics_systems_;
-	std::vector<Lifecycle*> render_systems_;
+	World& world_;
+	RenderSystem& render_system_;
+	RenderRequestCallback render_request_callback_;
+	std::mutex world_job_mutex_;
+	std::vector<WorldJob> pending_world_jobs_;
 
 	std::atomic<bool> running_ = false;
 	bool initialized_ = false;
 
-	std::thread simulation_thread_;
-	std::thread physics_thread_;
-	std::thread render_thread_;
+	std::thread engine_thread_;
 };

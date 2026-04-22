@@ -1,4 +1,5 @@
 #include "cloth/core/Cloth.h"
+#include <glm/gtc/random.hpp>
 
 Cloth::Cloth(int width, int height, float spacing)
 {
@@ -23,8 +24,8 @@ void Cloth::build_grid(int width, int height, float spacing)
 		{
 			const float px = start_x + x * spacing_;
 			const float py = start_y - y * spacing_;
-
-			particles_.emplace_back(glm::vec3(px, py, 0.0f));
+			
+			particles_.emplace_back(glm::vec3(px, py, glm::linearRand(-1.0f, 1.0f)));
 		}
 	}
 

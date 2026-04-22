@@ -2,7 +2,8 @@
 
 #include <QMainWindow>
 
-class ClothRenderSystem;
+class Engine;
+class RenderSystem;
 class ViewportWidget;
 
 class MainWindow : public QMainWindow
@@ -10,7 +11,7 @@ class MainWindow : public QMainWindow
 	Q_OBJECT
 
 public:
-	explicit MainWindow(ClothRenderSystem& render_system, QWidget* parent = nullptr);
+	MainWindow(RenderSystem& render_system, Engine& engine, QWidget* parent = nullptr);
 	~MainWindow() override = default;
 
 	void request_render();

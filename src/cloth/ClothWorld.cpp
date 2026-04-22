@@ -1,66 +1,24 @@
 #include "cloth/ClothWorld.h"
 
-#include <utility>
+#include "cloth/ClothObject.h"
+#include "components/PBDClothSimulationComponent.h"
+#include "components/XPBDClothSimulationComponent.h"
 
-void ClothWorld::initialize()
+ClothWorld::ClothWorld()
 {
-	std::lock_guard<std::mutex> lock(cloth_mutex_);
+	camera().position = glm::vec3(0.0f, 0.0f, 2.6f);
+	camera().target = glm::vec3(0.0f, 0.0f, 0.0f);
+	camera().fov_y_degrees = 45.0f;
 
-	if (initialized_)
-	{
-		return;
-	}
+	directional_light().direction = glm::vec3(-0.75f, 0.65f, 0.45f);
+	directional_light().ambient_strength = 0.16f;
+	directional_light().diffuse_strength = 1.15f;
 
-	cloth_.build_grid(20, 20, 0.05f);
-	cloth_.set_fixed(0, 0, true);
-	cloth_.set_fixed(cloth_.get_width() - 1, 0, true);
-	initialized_ = true;
-}
+	ClothObject& pbd_cloth = create_object<ClothObject>(100, 100, 0.05f);
+	pbd_cloth.add_component<PBDClothSimulationComponent>(pbd_cloth.cloth());
+	pbd_cloth.transform().position = glm::vec3(-3.f, 0.0f, 0.0f);
 
-void ClothWorld::step_physics(ClothSimulator& simulator, float delta_time)
-{
-	std::lock_guard<std::mutex> lock(cloth_mutex_);
-	simulator.step(cloth_, delta_time);
-}
-
-void ClothWorld::publish_render_data()
-{
-	std::vector<glm::vec3> positions;
-
-	{
-		std::lock_guard<std::mutex> lock(cloth_mutex_);
-		positions = cloth_.get_positions();
-	}
-
-	{
-		std::lock_guard<std::mutex> lock(render_data_mutex_);
-		render_data_.positions = std::move(positions);
-		render_data_dirty_ = true;
-	}
-}
-
-bool ClothWorld::consume_render_data(ClothRenderData& render_data)
-{
-	std::lock_guard<std::mutex> lock(render_data_mutex_);
-
-	if (!render_data_dirty_)
-	{
-		return false;
-	}
-
-	render_data.positions = std::move(render_data_.positions);
-	render_data_dirty_ = false;
-	return true;
-}
-
-const std::vector<unsigned int>* ClothWorld::get_indices()
-{
-	std::lock_guard<std::mutex> lock(cloth_mutex_);
-
-	if (!initialized_)
-	{
-		return nullptr;
-	}
-
-	return &cloth_.get_indices();
+	ClothObject& xpbd_cloth = create_object<ClothObject>(100, 100, 0.05f);
+	xpbd_cloth.add_component<XPBDClothSimulationComponent>(xpbd_cloth.cloth());
+	xpbd_cloth.transform().position = glm::vec3(3.f, 0.0f, 0.0f);
 }
