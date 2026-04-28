@@ -1,18 +1,24 @@
 #include "cloth/ClothWorld.h"
 
+#include <glm/geometric.hpp>
+
 #include "cloth/ClothObject.h"
+#include "cloth/components/ClothCameraInputComponent.h"
 #include "components/PBDClothSimulationComponent.h"
 #include "components/XPBDClothSimulationComponent.h"
+#include "engine/objects/CameraObject.h"
+#include "engine/objects/DirectionalLightObject.h"
 
 ClothWorld::ClothWorld()
 {
-	camera().position = glm::vec3(0.0f, 0.0f, 2.6f);
-	camera().target = glm::vec3(0.0f, 0.0f, 0.0f);
-	camera().fov_y_degrees = 45.0f;
+	main_camera().transform().position = glm::vec3(0.0f, 0.0f, 2.6f);
+	main_camera().transform().look_at(glm::vec3(0.0f, 0.0f, 0.0f));
+	main_camera().fov_y_degrees = 45.0f;
+	main_camera().add_component<ClothCameraInputComponent>();
 
-	directional_light().direction = glm::vec3(-0.75f, 0.65f, 0.45f);
-	directional_light().ambient_strength = 0.16f;
-	directional_light().diffuse_strength = 1.15f;
+	main_directional_light().transform().set_forward(glm::normalize(glm::vec3(-0.75f, 0.65f, 0.45f)));
+	main_directional_light().ambient_strength = 0.16f;
+	main_directional_light().diffuse_strength = 1.15f;
 
 	// ClothObject& pbd_cloth = create_object<ClothObject>(64, 64, 0.05f);
 	// pbd_cloth.add_component<PBDClothSimulationComponent>(pbd_cloth.cloth());

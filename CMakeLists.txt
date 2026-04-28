@@ -35,6 +35,10 @@ set(ENGINE_SOURCES
     src/engine/render/RenderScene.h
     src/engine/render/RenderSystem.h
     src/engine/render/RenderSystem.cpp
+    src/engine/objects/CameraObject.h
+    src/engine/objects/CameraObject.cpp
+    src/engine/objects/DirectionalLightObject.h
+    src/engine/objects/DirectionalLightObject.cpp
 )
 
 set(CLOTH_SOURCES
@@ -42,6 +46,8 @@ set(CLOTH_SOURCES
     src/cloth/ClothWorld.cpp
     src/cloth/ClothObject.h
     src/cloth/ClothObject.cpp
+    src/cloth/components/ClothCameraInputComponent.h
+    src/cloth/components/ClothCameraInputComponent.cpp
     src/cloth/components/ClothInteractionComponent.h
     src/cloth/components/ClothInteractionComponent.cpp
     src/cloth/components/ClothRenderComponent.h

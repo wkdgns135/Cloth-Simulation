@@ -3,9 +3,6 @@
 #include <QKeyEvent>
 #include <QMouseEvent>
 #include <QWheelEvent>
-#include <algorithm>
-#include <cmath>
-#include <glm/geometric.hpp>
 
 #include "engine/Engine.h"
 #include "engine/components/InputComponent.h"
@@ -14,24 +11,7 @@
 
 namespace
 {
-constexpr float kCameraMoveSpeed = 1.2f;
-constexpr float kCameraOrbitSensitivity = 0.006f;
-constexpr float kCameraZoomStepScale = 0.88f;
-constexpr float kMinCameraDistance = 0.2f;
-constexpr float kMaxCameraDistance = 20.0f;
-constexpr float kMaxCameraPitch = 1.55334306f;
-constexpr float kVectorLengthThreshold = 0.000001f;
 constexpr int kClickMovementThresholdSquared = 9;
-
-glm::vec3 safe_normalize(const glm::vec3& value, const glm::vec3& fallback)
-{
-	if (glm::dot(value, value) <= kVectorLengthThreshold)
-	{
-		return fallback;
-	}
-
-	return glm::normalize(value);
-}
 
 std::uint32_t to_input_modifiers(Qt::KeyboardModifiers modifiers)
 {
@@ -117,11 +97,6 @@ ViewportWidget::ViewportWidget(RenderSystem& render_system, Engine& engine, QWid
 {
 	setFocusPolicy(Qt::StrongFocus);
 	setMouseTracking(true);
-
-	camera_time_.start();
-	camera_timer_.setTimerType(Qt::PreciseTimer);
-	connect(&camera_timer_, &QTimer::timeout, this, &ViewportWidget::update_camera_movement);
-	camera_timer_.start(16);
 }
 
 ViewportWidget::~ViewportWidget()
@@ -161,43 +136,10 @@ void ViewportWidget::keyPressEvent(QKeyEvent* event)
 		return;
 	}
 
-	switch (event->key())
+	const InputKey key = to_input_key(event->key());
+	if (key != InputKey::Unknown)
 	{
-	case Qt::Key_W:
-	case Qt::Key_Up:
-		moving_forward_ = true;
-		event->accept();
-		return;
-	case Qt::Key_S:
-	case Qt::Key_Down:
-		moving_backward_ = true;
-		event->accept();
-		return;
-	case Qt::Key_A:
-	case Qt::Key_Left:
-		moving_left_ = true;
-		event->accept();
-		return;
-	case Qt::Key_D:
-	case Qt::Key_Right:
-		moving_right_ = true;
-		event->accept();
-		return;
-	case Qt::Key_E:
-		moving_up_ = true;
-		event->accept();
-		return;
-	case Qt::Key_Q:
-		moving_down_ = true;
-		event->accept();
-		return;
-	default:
-		break;
-	}
-
-	dispatch_key_event(true, event);
-	if (to_input_key(event->key()) != InputKey::Unknown)
-	{
+		dispatch_key_event(true, event);
 		event->accept();
 		return;
 	}
@@ -213,43 +155,10 @@ void ViewportWidget::keyReleaseEvent(QKeyEvent* event)
 		return;
 	}
 
-	switch (event->key())
+	const InputKey key = to_input_key(event->key());
+	if (key != InputKey::Unknown)
 	{
-	case Qt::Key_W:
-	case Qt::Key_Up:
-		moving_forward_ = false;
-		event->accept();
-		return;
-	case Qt::Key_S:
-	case Qt::Key_Down:
-		moving_backward_ = false;
-		event->accept();
-		return;
-	case Qt::Key_A:
-	case Qt::Key_Left:
-		moving_left_ = false;
-		event->accept();
-		return;
-	case Qt::Key_D:
-	case Qt::Key_Right:
-		moving_right_ = false;
-		event->accept();
-		return;
-	case Qt::Key_E:
-		moving_up_ = false;
-		event->accept();
-		return;
-	case Qt::Key_Q:
-		moving_down_ = false;
-		event->accept();
-		return;
-	default:
-		break;
-	}
-
-	dispatch_key_event(false, event);
-	if (to_input_key(event->key()) != InputKey::Unknown)
-	{
+		dispatch_key_event(false, event);
 		event->accept();
 		return;
 	}
@@ -268,7 +177,6 @@ void ViewportWidget::mousePressEvent(QMouseEvent* event)
 
 	if (event->button() == Qt::LeftButton)
 	{
-		rotating_camera_ = true;
 		left_button_press_position_ = current_position;
 		left_button_dragged_ = false;
 		event->accept();
@@ -284,8 +192,6 @@ void ViewportWidget::mouseReleaseEvent(QMouseEvent* event)
 
 	if (event->button() == Qt::LeftButton)
 	{
-		rotating_camera_ = false;
-
 		const QPoint release_position = event->position().toPoint();
 		const QPoint click_delta = release_position - left_button_press_position_;
 		const int click_distance_squared = click_delta.x() * click_delta.x() + click_delta.y() * click_delta.y();
@@ -310,16 +216,9 @@ void ViewportWidget::mouseMoveEvent(QMouseEvent* event)
 
 	dispatch_pointer_move_event(event, delta);
 
-	if (rotating_camera_)
+	if (event->buttons().testFlag(Qt::LeftButton) && !delta.isNull())
 	{
-		if (!delta.isNull())
-		{
-			left_button_dragged_ = true;
-		}
-		orbit_camera(delta);
-		update();
-		event->accept();
-		return;
+		left_button_dragged_ = true;
 	}
 
 	QOpenGLWidget::mouseMoveEvent(event);
@@ -331,8 +230,6 @@ void ViewportWidget::wheelEvent(QWheelEvent* event)
 	if (wheel_steps != 0.0f)
 	{
 		dispatch_wheel_event(event, wheel_steps);
-		zoom_camera(wheel_steps);
-		update();
 		event->accept();
 		return;
 	}
@@ -451,134 +348,5 @@ void ViewportWidget::dispatch_wheel_event(QWheelEvent* event, float wheel_steps)
 
 	engine_.enqueue_world_job([input_event](World& current_world) {
 		current_world.handle_wheel_scrolled(input_event);
-	});
-}
-
-void ViewportWidget::update_camera_movement()
-{
-	const qint64 elapsed_ms = camera_time_.restart();
-	const float delta_time = std::min(static_cast<float>(elapsed_ms) / 1000.0f, 0.05f);
-
-	if (!moving_forward_
-		&& !moving_backward_
-		&& !moving_left_
-		&& !moving_right_
-		&& !moving_up_
-		&& !moving_down_)
-	{
-		return;
-	}
-
-	move_camera(delta_time);
-	update();
-}
-
-void ViewportWidget::move_camera(float delta_time)
-{
-	const bool moving_forward = moving_forward_;
-	const bool moving_backward = moving_backward_;
-	const bool moving_left = moving_left_;
-	const bool moving_right = moving_right_;
-	const bool moving_up = moving_up_;
-	const bool moving_down = moving_down_;
-
-	engine_.enqueue_world_job([=](World& current_world) {
-		Camera& camera = current_world.camera();
-
-		const glm::vec3 forward = safe_normalize(camera.target - camera.position, glm::vec3(0.0f, 0.0f, -1.0f));
-		const glm::vec3 up = safe_normalize(camera.up, glm::vec3(0.0f, 1.0f, 0.0f));
-		const glm::vec3 right = safe_normalize(glm::cross(forward, up), glm::vec3(1.0f, 0.0f, 0.0f));
-
-		glm::vec3 movement(0.0f);
-		if (moving_forward)
-		{
-			movement += forward;
-		}
-		if (moving_backward)
-		{
-			movement -= forward;
-		}
-		if (moving_right)
-		{
-			movement += right;
-		}
-		if (moving_left)
-		{
-			movement -= right;
-		}
-		if (moving_up)
-		{
-			movement += up;
-		}
-		if (moving_down)
-		{
-			movement -= up;
-		}
-
-		if (glm::dot(movement, movement) <= kVectorLengthThreshold)
-		{
-			return;
-		}
-
-		const glm::vec3 offset = glm::normalize(movement) * kCameraMoveSpeed * delta_time;
-		camera.position += offset;
-		camera.target += offset;
-	});
-}
-
-void ViewportWidget::orbit_camera(const QPoint& delta)
-{
-	if (delta.isNull())
-	{
-		return;
-	}
-
-	engine_.enqueue_world_job([delta](World& current_world) {
-		Camera& camera = current_world.camera();
-
-		const glm::vec3 offset = camera.position - camera.target;
-		const float radius = glm::length(offset);
-		if (radius <= kMinCameraDistance)
-		{
-			return;
-		}
-
-		float yaw = std::atan2(offset.x, offset.z);
-		float pitch = std::asin(std::clamp(offset.y / radius, -1.0f, 1.0f));
-
-		yaw -= static_cast<float>(delta.x()) * kCameraOrbitSensitivity;
-		pitch += static_cast<float>(delta.y()) * kCameraOrbitSensitivity;
-		pitch = std::clamp(pitch, -kMaxCameraPitch, kMaxCameraPitch);
-
-		const float cos_pitch = std::cos(pitch);
-		camera.position = camera.target + glm::vec3(
-			std::sin(yaw) * cos_pitch * radius,
-			std::sin(pitch) * radius,
-			std::cos(yaw) * cos_pitch * radius);
-		camera.up = glm::vec3(0.0f, 1.0f, 0.0f);
-	});
-}
-
-void ViewportWidget::zoom_camera(float wheel_steps)
-{
-	engine_.enqueue_world_job([wheel_steps](World& current_world) {
-		Camera& camera = current_world.camera();
-
-		glm::vec3 offset = camera.position - camera.target;
-		float distance = glm::length(offset);
-
-		if (distance <= kVectorLengthThreshold)
-		{
-			offset = glm::vec3(0.0f, 0.0f, 1.0f);
-			distance = 1.0f;
-		}
-
-		const glm::vec3 direction = offset / distance;
-		const float next_distance = std::clamp(
-			distance * std::pow(kCameraZoomStepScale, wheel_steps),
-			kMinCameraDistance,
-			kMaxCameraDistance);
-
-		camera.position = camera.target + direction * next_distance;
 	});
 }

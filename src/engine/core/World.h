@@ -9,6 +9,8 @@
 #include "engine/core/Object.h"
 #include "engine/render/RenderScene.h"
 
+class CameraObject;
+class DirectionalLightObject;
 struct KeyInputEvent;
 struct PointerInputEvent;
 struct ClickInputEvent;
@@ -17,7 +19,7 @@ struct WheelInputEvent;
 class World : public Lifecycle
 {
 public:
-	World() = default;
+	World();
 	~World() override = default;
 
 	World(const World&) = delete;
@@ -61,16 +63,19 @@ public:
 
 	RenderScene build_render_scene() const;
 
-	Camera& camera() { return camera_; }
-	const Camera& camera() const { return camera_; }
+	CameraObject& main_camera();
+	const CameraObject& main_camera() const;
 
-	DirectionalLight& directional_light() { return directional_light_; }
-	const DirectionalLight& directional_light() const { return directional_light_; }
+	DirectionalLightObject& main_directional_light();
+	const DirectionalLightObject& main_directional_light() const;
+
+	void set_main_camera(CameraObject& camera_object);
+	void set_main_directional_light(DirectionalLightObject& directional_light_object);
 
 private:
 	std::vector<std::unique_ptr<Object>> objects_;
-	Camera camera_;
-	DirectionalLight directional_light_;
+	CameraObject* main_camera_object_ = nullptr;
+	DirectionalLightObject* main_directional_light_object_ = nullptr;
 	bool awakened_ = false;
 	bool started_ = false;
 	bool destroyed_ = false;
