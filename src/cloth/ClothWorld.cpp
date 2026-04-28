@@ -14,11 +14,11 @@ ClothWorld::ClothWorld()
 	directional_light().ambient_strength = 0.16f;
 	directional_light().diffuse_strength = 1.15f;
 
-	ClothObject& pbd_cloth = create_object<ClothObject>(100, 100, 0.05f);
-	pbd_cloth.add_component<PBDClothSimulationComponent>(pbd_cloth.cloth());
-	pbd_cloth.transform().position = glm::vec3(-3.f, 0.0f, 0.0f);
+	// ClothObject& pbd_cloth = create_object<ClothObject>(64, 64, 0.05f);
+	// pbd_cloth.add_component<PBDClothSimulationComponent>(pbd_cloth.cloth());
+	// pbd_cloth.transform().position = glm::vec3(-3.f, 0.0f, 0.0f);
 
-	ClothObject& xpbd_cloth = create_object<ClothObject>(100, 100, 0.05f);
+	ClothObject& xpbd_cloth = create_object<ClothObject>("root/asset/test_cloth_patch.obj");
 	xpbd_cloth.add_component<XPBDClothSimulationComponent>(xpbd_cloth.cloth());
 	xpbd_cloth.transform().position = glm::vec3(3.f, 0.0f, 0.0f);
 }

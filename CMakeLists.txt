@@ -43,8 +43,6 @@ set(CLOTH_SOURCES
     src/cloth/ClothObject.cpp
     src/cloth/components/ClothRenderComponent.h
     src/cloth/components/ClothRenderComponent.cpp
-    src/cloth/components/ClothSimulationComponent.h
-    src/cloth/components/ClothSimulationComponent.cpp
     src/cloth/components/PBDClothSimulationComponent.h
     src/cloth/components/PBDClothSimulationComponent.cpp
     src/cloth/components/XPBDClothSimulationComponent.h
@@ -52,6 +50,10 @@ set(CLOTH_SOURCES
     src/cloth/core/Particle.h
     src/cloth/core/Cloth.h
     src/cloth/core/Cloth.cpp
+)
+set(IO_SOURCES
+    src/io/MeshLoader.h
+    src/io/MeshLoader.cpp
 )
 
 set(PLATFORM_QT_SOURCES
@@ -67,6 +69,7 @@ target_sources(${PROJECT_NAME} PRIVATE
     ${APP_SOURCES}
     ${ENGINE_SOURCES}
     ${CLOTH_SOURCES}
+    ${IO_SOURCES}
     ${PLATFORM_QT_SOURCES}
 )
 
@@ -79,6 +82,15 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
     Qt6::Widgets
     Qt6::OpenGLWidgets
     OpenGL::GL
+)
+
+add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+    COMMAND "${CMAKE_COMMAND}" -E make_directory
+        "$<TARGET_FILE_DIR:${PROJECT_NAME}>/root/asset"
+    COMMAND "${CMAKE_COMMAND}" -E copy_directory
+        "${CMAKE_SOURCE_DIR}/root/asset"
+        "$<TARGET_FILE_DIR:${PROJECT_NAME}>/root/asset"
+    COMMENT "Copying runtime assets"
 )
 
 if (MSVC)

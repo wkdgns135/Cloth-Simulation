@@ -1,9 +1,16 @@
 #include "cloth/core/Cloth.h"
-#include <glm/gtc/random.hpp>
+
+#include <stdexcept>
+#include <utility>
 
 Cloth::Cloth(int width, int height, float spacing)
 {
 	build_grid(width, height, spacing);
+}
+
+Cloth::Cloth(std::vector<glm::vec3> vertices, std::vector<unsigned int> indices)
+{
+	build_from_mesh(vertices, indices);
 }
 
 void Cloth::build_grid(int width, int height, float spacing)
@@ -24,8 +31,8 @@ void Cloth::build_grid(int width, int height, float spacing)
 		{
 			const float px = start_x + x * spacing_;
 			const float py = start_y - y * spacing_;
-			
-			particles_.emplace_back(glm::vec3(px, py, glm::linearRand(-1.0f, 1.0f)));
+
+			particles_.emplace_back(glm::vec3(px, py, 0));
 		}
 	}
 
@@ -55,6 +62,38 @@ void Cloth::build_grid(int width, int height, float spacing)
 			indices_.push_back(i3);
 		}
 	}
+
+	++topology_revision_;
+}
+
+void Cloth::build_from_mesh(const std::vector<glm::vec3>& vertices, const std::vector<unsigned int>& indices)
+{
+	if (indices.size() % 3 != 0)
+	{
+		throw std::invalid_argument("Mesh indices must be triangle-based (multiple of 3).");
+	}
+
+	for (unsigned int index : indices)
+	{
+		if (index >= vertices.size())
+		{
+			throw std::out_of_range("Mesh index is out of bounds for provided vertices.");
+		}
+	}
+
+	width_ = 0;
+	height_ = 0;
+	spacing_ = 0.0f;
+
+	particles_.clear();
+	particles_.reserve(vertices.size());
+	for (const glm::vec3& position : vertices)
+	{
+		particles_.emplace_back(position);
+	}
+
+	indices_ = indices;
+	++topology_revision_;
 }
 
 void Cloth::set_fixed(int x, int y, bool is_fixed)
@@ -65,6 +104,16 @@ void Cloth::set_fixed(int x, int y, bool is_fixed)
 	}
 
 	particles_[get_index(x, y)].is_fixed = is_fixed;
+}
+
+void Cloth::set_fixed(int index, bool is_fixed)
+{
+	if (index < 0 || index >= static_cast<int>(particles_.size()))
+	{
+		return;
+	}
+
+	particles_[index].is_fixed = is_fixed;
 }
 
 const std::vector<Particle>& Cloth::get_particles() const

@@ -99,7 +99,6 @@ void Renderer::setup_shaders()
         uniform mat4 u_view_projection;
         uniform mat3 u_normal_matrix;
 
-        out vec3 v_world_position;
         out vec3 v_normal;
         out vec4 v_color;
 
@@ -107,7 +106,6 @@ void Renderer::setup_shaders()
         {
             vec4 world_position = u_model * vec4(a_pos, 1.0);
             gl_Position = u_view_projection * world_position;
-            v_world_position = world_position.xyz;
             v_normal = normalize(u_normal_matrix * a_normal);
             v_color = a_color;
         }
@@ -115,11 +113,10 @@ void Renderer::setup_shaders()
 
 	const char* fragment_shader_source = R"(
         #version 330 core
-        in vec3 v_world_position;
         in vec3 v_normal;
         in vec4 v_color;
 
-        uniform vec3 u_light_position;
+        uniform vec3 u_light_direction;
         uniform vec3 u_light_color;
         uniform float u_ambient_strength;
         uniform float u_diffuse_strength;
@@ -135,13 +132,9 @@ void Renderer::setup_shaders()
                 normal = -normal;
             }
 
-            vec3 light_ray = u_light_position - v_world_position;
-            float light_distance = length(light_ray);
-            vec3 light_dir = light_ray / max(light_distance, 0.0001);
-
+            vec3 light_dir = normalize(u_light_direction);
             float diffuse = max(dot(normal, light_dir), 0.0);
-            float attenuation = 1.0 / (1.0 + light_distance * light_distance * 0.45);
-            float lighting = u_ambient_strength + diffuse * u_diffuse_strength * attenuation;
+            float lighting = u_ambient_strength + diffuse * u_diffuse_strength;
 
             vec4 base_color = v_color * u_material_color;
             FragColor = vec4(base_color.rgb * u_light_color * lighting, base_color.a);
@@ -183,12 +176,11 @@ void Renderer::draw_object(const RenderObject& object, const RenderScene& scene,
 
 	const glm::mat3 normal_matrix = glm::inverseTranspose(glm::mat3(object.transform));
 	const glm::vec3 light_direction = glm::normalize(scene.directional_light.direction);
-	const glm::vec3 light_position = scene.camera.target + light_direction * 1.2f;
 
 	glUniformMatrix4fv(program_.uniformLocation("u_model"), 1, GL_FALSE, glm::value_ptr(object.transform));
 	glUniformMatrix4fv(program_.uniformLocation("u_view_projection"), 1, GL_FALSE, glm::value_ptr(view_projection));
 	glUniformMatrix3fv(program_.uniformLocation("u_normal_matrix"), 1, GL_FALSE, glm::value_ptr(normal_matrix));
-	glUniform3fv(program_.uniformLocation("u_light_position"), 1, glm::value_ptr(light_position));
+	glUniform3fv(program_.uniformLocation("u_light_direction"), 1, glm::value_ptr(light_direction));
 	glUniform3fv(program_.uniformLocation("u_light_color"), 1, glm::value_ptr(scene.directional_light.color));
 	glUniform1f(program_.uniformLocation("u_ambient_strength"), scene.directional_light.ambient_strength);
 	glUniform1f(program_.uniformLocation("u_diffuse_strength"), scene.directional_light.diffuse_strength);
