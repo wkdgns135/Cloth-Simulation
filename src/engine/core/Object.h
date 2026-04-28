@@ -10,10 +10,9 @@
 #include "engine/lifecycle/Lifecycle.h"
 
 struct RenderScene;
-struct KeyInputEvent;
-struct PointerInputEvent;
 struct ClickInputEvent;
-struct WheelInputEvent;
+struct PointerPosition;
+class World;
 
 class Object : public Lifecycle
 {
@@ -31,16 +30,16 @@ public:
 	void destroy() override;
 
 	void collect_render_data(RenderScene& scene) const;
-	bool handle_key_pressed(const KeyInputEvent& event);
-	bool handle_key_released(const KeyInputEvent& event);
-	bool handle_pointer_pressed(const PointerInputEvent& event);
-	bool handle_pointer_released(const PointerInputEvent& event);
-	bool handle_pointer_moved(const PointerInputEvent& event);
-	bool handle_click(const ClickInputEvent& event);
-	bool handle_wheel_scrolled(const WheelInputEvent& event);
+	virtual bool on_click(const ClickInputEvent& event);
+	virtual void on_hover_enter(const PointerPosition& position);
+	virtual void on_hover_leave(const PointerPosition& position);
+	virtual bool hit_test(const glm::vec3& ray_origin, const glm::vec3& ray_direction, float& hit_distance) const;
 
 	Transform& transform() { return transform_; }
 	const Transform& transform() const { return transform_; }
+	void set_world(World* world) { world_ = world; }
+	World* world() { return world_; }
+	const World* world() const { return world_; }
 
 	void add_component(std::unique_ptr<Component> component);
 
@@ -89,6 +88,7 @@ public:
 
 private:
 	Transform transform_;
+	World* world_ = nullptr;
 	std::vector<std::unique_ptr<Component>> components_;
 	bool awakened_ = false;
 	bool started_ = false;

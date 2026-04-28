@@ -7,17 +7,29 @@
 class ClothCameraInputComponent final : public InputComponent
 {
 public:
+	ClothCameraInputComponent();
+
 	void start() override;
 	void update(float delta_time) override;
 
-	bool on_key_pressed(const KeyInputEvent& event) override;
-	bool on_key_released(const KeyInputEvent& event) override;
-	bool on_pointer_pressed(const PointerInputEvent& event) override;
-	bool on_pointer_released(const PointerInputEvent& event) override;
-	bool on_pointer_moved(const PointerInputEvent& event) override;
-	bool on_wheel_scrolled(const WheelInputEvent& event) override;
-
 private:
+	bool handle_move_forward_pressed(const KeyInputEvent& event);
+	bool handle_move_forward_released(const KeyInputEvent& event);
+	bool handle_move_backward_pressed(const KeyInputEvent& event);
+	bool handle_move_backward_released(const KeyInputEvent& event);
+	bool handle_move_left_pressed(const KeyInputEvent& event);
+	bool handle_move_left_released(const KeyInputEvent& event);
+	bool handle_move_right_pressed(const KeyInputEvent& event);
+	bool handle_move_right_released(const KeyInputEvent& event);
+	bool handle_move_up_pressed(const KeyInputEvent& event);
+	bool handle_move_up_released(const KeyInputEvent& event);
+	bool handle_move_down_pressed(const KeyInputEvent& event);
+	bool handle_move_down_released(const KeyInputEvent& event);
+	bool handle_left_pointer_pressed(const PointerInputEvent& event);
+	bool handle_left_pointer_released(const PointerInputEvent& event);
+	bool handle_pointer_moved(const PointerInputEvent& event);
+	bool handle_wheel_scrolled(const WheelInputEvent& event);
+
 	void initialize_focus_target();
 	void move_camera(float delta_time);
 	void orbit_camera(const PointerPosition& delta);

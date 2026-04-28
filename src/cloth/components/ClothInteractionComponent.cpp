@@ -1,69 +1,24 @@
 #include "cloth/components/ClothInteractionComponent.h"
 
-#include <algorithm>
-#include <cstddef>
+#include "cloth/ClothObject.h"
 
-#include "cloth/core/Cloth.h"
-
-ClothInteractionComponent::ClothInteractionComponent(Cloth& cloth)
-	: cloth_(cloth)
+ClothInteractionComponent::ClothInteractionComponent(ClothObject& cloth_object)
+	: cloth_object_(cloth_object)
 {
-	cache_initial_state();
+	bind_key_pressed(InputKey::R, this, &ClothInteractionComponent::handle_reset_pressed);
+	bind_key_pressed(InputKey::Space, this, &ClothInteractionComponent::handle_toggle_anchor_pressed);
 }
 
-bool ClothInteractionComponent::on_key_pressed(const KeyInputEvent& event)
+bool ClothInteractionComponent::handle_reset_pressed(const KeyInputEvent& event)
 {
-	switch (event.key)
-	{
-	case InputKey::R:
-		restore_initial_state();
-		return true;
-	case InputKey::Space:
-		toggle_anchor_state();
-		return true;
-	default:
-		return false;
-	}
+	static_cast<void>(event);
+	cloth_object_.reset_to_initial_state();
+	return true;
 }
 
-void ClothInteractionComponent::cache_initial_state()
+bool ClothInteractionComponent::handle_toggle_anchor_pressed(const KeyInputEvent& event)
 {
-	initial_particles_ = cloth_.get_particles();
-	cached_topology_revision_ = cloth_.get_topology_revision();
-	anchors_enabled_ = true;
-}
-
-void ClothInteractionComponent::refresh_initial_state_if_needed()
-{
-	if (cached_topology_revision_ != cloth_.get_topology_revision()
-		|| initial_particles_.size() != cloth_.get_particles().size())
-	{
-		cache_initial_state();
-	}
-}
-
-void ClothInteractionComponent::restore_initial_state()
-{
-	refresh_initial_state_if_needed();
-	cloth_.get_particles() = initial_particles_;
-	anchors_enabled_ = true;
-}
-
-void ClothInteractionComponent::toggle_anchor_state()
-{
-	refresh_initial_state_if_needed();
-	anchors_enabled_ = !anchors_enabled_;
-
-	auto& particles = cloth_.get_particles();
-	const std::size_t particle_count = std::min(particles.size(), initial_particles_.size());
-
-	for (std::size_t i = 0; i < particle_count; ++i)
-	{
-		particles[i].is_fixed = anchors_enabled_ ? initial_particles_[i].is_fixed : false;
-
-		if (particles[i].is_fixed)
-		{
-			particles[i].prev_position = particles[i].position;
-		}
-	}
+	static_cast<void>(event);
+	cloth_object_.toggle_anchor_state();
+	return true;
 }

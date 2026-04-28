@@ -1,27 +1,6 @@
 #include "engine/core/Object.h"
 
-#include "engine/components/InputComponent.h"
 #include "engine/components/RenderComponent.h"
-
-namespace
-{
-template <typename Callback>
-bool dispatch_input_event(std::vector<std::unique_ptr<Component>>& components, Callback&& callback)
-{
-	for (auto it = components.rbegin(); it != components.rend(); ++it)
-	{
-		if (InputComponent* input_component = dynamic_cast<InputComponent*>(it->get()))
-		{
-			if (callback(*input_component))
-			{
-				return true;
-			}
-		}
-	}
-
-	return false;
-}
-}
 
 void Object::add_component(std::unique_ptr<Component> component)
 {
@@ -128,51 +107,26 @@ void Object::collect_render_data(RenderScene& scene) const
 	}
 }
 
-bool Object::handle_key_pressed(const KeyInputEvent& event)
+bool Object::on_click(const ClickInputEvent& event)
 {
-	return dispatch_input_event(components_, [&](InputComponent& input_component) {
-		return input_component.on_key_pressed(event);
-	});
+	static_cast<void>(event);
+	return false;
 }
 
-bool Object::handle_key_released(const KeyInputEvent& event)
+void Object::on_hover_enter(const PointerPosition& position)
 {
-	return dispatch_input_event(components_, [&](InputComponent& input_component) {
-		return input_component.on_key_released(event);
-	});
+	static_cast<void>(position);
 }
 
-bool Object::handle_pointer_pressed(const PointerInputEvent& event)
+void Object::on_hover_leave(const PointerPosition& position)
 {
-	return dispatch_input_event(components_, [&](InputComponent& input_component) {
-		return input_component.on_pointer_pressed(event);
-	});
+	static_cast<void>(position);
 }
 
-bool Object::handle_pointer_released(const PointerInputEvent& event)
+bool Object::hit_test(const glm::vec3& ray_origin, const glm::vec3& ray_direction, float& hit_distance) const
 {
-	return dispatch_input_event(components_, [&](InputComponent& input_component) {
-		return input_component.on_pointer_released(event);
-	});
-}
-
-bool Object::handle_pointer_moved(const PointerInputEvent& event)
-{
-	return dispatch_input_event(components_, [&](InputComponent& input_component) {
-		return input_component.on_pointer_moved(event);
-	});
-}
-
-bool Object::handle_click(const ClickInputEvent& event)
-{
-	return dispatch_input_event(components_, [&](InputComponent& input_component) {
-		return input_component.on_click(event);
-	});
-}
-
-bool Object::handle_wheel_scrolled(const WheelInputEvent& event)
-{
-	return dispatch_input_event(components_, [&](InputComponent& input_component) {
-		return input_component.on_wheel_scrolled(event);
-	});
+	static_cast<void>(ray_origin);
+	static_cast<void>(ray_direction);
+	static_cast<void>(hit_distance);
+	return false;
 }

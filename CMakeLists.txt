@@ -21,6 +21,7 @@ set(ENGINE_SOURCES
     src/engine/Engine.h
     src/engine/Engine.cpp
     src/engine/components/InputComponent.h
+    src/engine/components/InputComponent.cpp
     src/engine/components/RenderComponent.h
     src/engine/components/SimulationComponent.h
     src/engine/core/Component.h

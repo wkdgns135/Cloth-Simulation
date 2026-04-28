@@ -121,6 +121,9 @@ void ViewportWidget::initializeGL()
 void ViewportWidget::resizeGL(int w, int h)
 {
 	render_system_.resize(w, h);
+	engine_.enqueue_world_job([w, h](World& current_world) {
+		current_world.set_viewport_size(w, h);
+	});
 }
 
 void ViewportWidget::paintGL()
@@ -254,11 +257,11 @@ void ViewportWidget::dispatch_key_event(bool is_pressed, QKeyEvent* event)
 	engine_.enqueue_world_job([input_event, is_pressed](World& current_world) {
 		if (is_pressed)
 		{
-			current_world.handle_key_pressed(input_event);
+			current_world.on_key_pressed(input_event);
 			return;
 		}
 
-		current_world.handle_key_released(input_event);
+		current_world.on_key_released(input_event);
 	});
 }
 
@@ -278,7 +281,7 @@ void ViewportWidget::dispatch_pointer_press_event(QMouseEvent* event)
 	};
 
 	engine_.enqueue_world_job([input_event](World& current_world) {
-		current_world.handle_pointer_pressed(input_event);
+		current_world.on_pointer_pressed(input_event);
 	});
 }
 
@@ -298,7 +301,7 @@ void ViewportWidget::dispatch_pointer_release_event(QMouseEvent* event)
 	};
 
 	engine_.enqueue_world_job([input_event](World& current_world) {
-		current_world.handle_pointer_released(input_event);
+		current_world.on_pointer_released(input_event);
 	});
 }
 
@@ -315,7 +318,7 @@ void ViewportWidget::dispatch_pointer_move_event(QMouseEvent* event, const QPoin
 	};
 
 	engine_.enqueue_world_job([input_event](World& current_world) {
-		current_world.handle_pointer_moved(input_event);
+		current_world.on_pointer_moved(input_event);
 	});
 }
 
@@ -334,7 +337,7 @@ void ViewportWidget::dispatch_click_event(QMouseEvent* event)
 	};
 
 	engine_.enqueue_world_job([input_event](World& current_world) {
-		current_world.handle_click(input_event);
+		current_world.on_click(input_event);
 	});
 }
 
@@ -347,6 +350,6 @@ void ViewportWidget::dispatch_wheel_event(QWheelEvent* event, float wheel_steps)
 	};
 
 	engine_.enqueue_world_job([input_event](World& current_world) {
-		current_world.handle_wheel_scrolled(input_event);
+		current_world.on_wheel_scrolled(input_event);
 	});
 }

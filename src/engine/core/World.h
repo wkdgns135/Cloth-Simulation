@@ -1,20 +1,19 @@
 #pragma once
 
+#include <array>
 #include <memory>
 #include <type_traits>
 #include <utility>
 #include <vector>
 
+#include "engine/components/InputComponent.h"
 #include "engine/lifecycle/Lifecycle.h"
 #include "engine/core/Object.h"
 #include "engine/render/RenderScene.h"
 
 class CameraObject;
 class DirectionalLightObject;
-struct KeyInputEvent;
-struct PointerInputEvent;
-struct ClickInputEvent;
-struct WheelInputEvent;
+class InputComponent;
 
 class World : public Lifecycle
 {
@@ -37,6 +36,7 @@ public:
 		static_assert(std::is_base_of_v<Object, T>);
 
 		auto object = std::make_unique<T>(std::forward<Args>(args)...);
+		object->set_world(this);
 		T& result = *object;
 
 		objects_.push_back(std::move(object));
@@ -53,26 +53,67 @@ public:
 		return result;
 	}
 
-	bool handle_key_pressed(const KeyInputEvent& event);
-	bool handle_key_released(const KeyInputEvent& event);
-	bool handle_pointer_pressed(const PointerInputEvent& event);
-	bool handle_pointer_released(const PointerInputEvent& event);
-	bool handle_pointer_moved(const PointerInputEvent& event);
-	bool handle_click(const ClickInputEvent& event);
-	bool handle_wheel_scrolled(const WheelInputEvent& event);
+	bool on_key_pressed(const KeyInputEvent& event);
+	bool on_key_released(const KeyInputEvent& event);
+	bool on_pointer_pressed(const PointerInputEvent& event);
+	bool on_pointer_released(const PointerInputEvent& event);
+	bool on_pointer_moved(const PointerInputEvent& event);
+	bool on_click(const ClickInputEvent& event);
+	bool on_wheel_scrolled(const WheelInputEvent& event);
+	void set_viewport_size(int width, int height);
 
 	RenderScene build_render_scene() const;
 
 protected:
-	void set_main_camera(CameraObject& camera_object);
-	void set_main_directional_light(DirectionalLightObject& directional_light_object);
+	virtual bool native_on_key_pressed(const KeyInputEvent& event);
+	virtual bool native_on_key_released(const KeyInputEvent& event);
+	virtual bool native_on_pointer_pressed(const PointerInputEvent& event);
+	virtual bool native_on_pointer_released(const PointerInputEvent& event);
+	virtual bool native_on_pointer_moved(const PointerInputEvent& event);
+	virtual bool native_on_click(const ClickInputEvent& event);
+	virtual bool native_on_wheel_scrolled(const WheelInputEvent& event);
 
 	std::vector<std::unique_ptr<Object>> objects_;
-	CameraObject* main_camera_object_ = nullptr;
-	DirectionalLightObject* main_directional_light_object_ = nullptr;
-
-private:
 	bool awakened_ = false;
 	bool started_ = false;
 	bool destroyed_ = false;
+	CameraObject* const main_camera_object_;
+	DirectionalLightObject* const main_directional_light_object_;
+
+private:
+	template <typename Handler>
+	struct InputListenerEntry
+	{
+		InputSubscriptionHandle handle;
+		Handler handler;
+	};
+
+	InputSubscriptionHandle subscribe_key_pressed(InputKey key, InputComponent::KeyHandler handler);
+	InputSubscriptionHandle subscribe_key_released(InputKey key, InputComponent::KeyHandler handler);
+	InputSubscriptionHandle subscribe_pointer_pressed(PointerButton button, InputComponent::PointerHandler handler);
+	InputSubscriptionHandle subscribe_pointer_released(PointerButton button, InputComponent::PointerHandler handler);
+	InputSubscriptionHandle subscribe_pointer_moved(InputComponent::PointerHandler handler);
+	InputSubscriptionHandle subscribe_wheel_scrolled(InputComponent::WheelHandler handler);
+
+	void unsubscribe_key_pressed(InputKey key, InputSubscriptionHandle handle);
+	void unsubscribe_key_released(InputKey key, InputSubscriptionHandle handle);
+	void unsubscribe_pointer_pressed(PointerButton button, InputSubscriptionHandle handle);
+	void unsubscribe_pointer_released(PointerButton button, InputSubscriptionHandle handle);
+	void unsubscribe_pointer_moved(InputSubscriptionHandle handle);
+	void unsubscribe_wheel_scrolled(InputSubscriptionHandle handle);
+	Object* pick_object(const PointerPosition& position) const;
+	void update_hovered_object(const PointerPosition& position);
+
+	std::array<std::vector<InputListenerEntry<InputComponent::KeyHandler>>, kInputKeyCount> key_pressed_listeners_;
+	std::array<std::vector<InputListenerEntry<InputComponent::KeyHandler>>, kInputKeyCount> key_released_listeners_;
+	std::array<std::vector<InputListenerEntry<InputComponent::PointerHandler>>, kPointerButtonCount> pointer_pressed_listeners_;
+	std::array<std::vector<InputListenerEntry<InputComponent::PointerHandler>>, kPointerButtonCount> pointer_released_listeners_;
+	std::vector<InputListenerEntry<InputComponent::PointerHandler>> pointer_moved_listeners_;
+	std::vector<InputListenerEntry<InputComponent::WheelHandler>> wheel_scrolled_listeners_;
+	std::uint64_t next_input_subscription_id_ = 1;
+	Object* hovered_object_ = nullptr;
+	int viewport_width_ = 1;
+	int viewport_height_ = 1;
+
+	friend class InputComponent;
 };

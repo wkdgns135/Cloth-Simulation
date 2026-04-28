@@ -23,6 +23,36 @@ glm::vec3 safe_normalize(const glm::vec3& value, const glm::vec3& fallback)
 }
 }
 
+ClothCameraInputComponent::ClothCameraInputComponent()
+{
+	bind_key_pressed(InputKey::W, this, &ClothCameraInputComponent::handle_move_forward_pressed);
+	bind_key_pressed(InputKey::Up, this, &ClothCameraInputComponent::handle_move_forward_pressed);
+	bind_key_pressed(InputKey::S, this, &ClothCameraInputComponent::handle_move_backward_pressed);
+	bind_key_pressed(InputKey::Down, this, &ClothCameraInputComponent::handle_move_backward_pressed);
+	bind_key_pressed(InputKey::A, this, &ClothCameraInputComponent::handle_move_left_pressed);
+	bind_key_pressed(InputKey::Left, this, &ClothCameraInputComponent::handle_move_left_pressed);
+	bind_key_pressed(InputKey::D, this, &ClothCameraInputComponent::handle_move_right_pressed);
+	bind_key_pressed(InputKey::Right, this, &ClothCameraInputComponent::handle_move_right_pressed);
+	bind_key_pressed(InputKey::E, this, &ClothCameraInputComponent::handle_move_up_pressed);
+	bind_key_pressed(InputKey::Q, this, &ClothCameraInputComponent::handle_move_down_pressed);
+
+	bind_key_released(InputKey::W, this, &ClothCameraInputComponent::handle_move_forward_released);
+	bind_key_released(InputKey::Up, this, &ClothCameraInputComponent::handle_move_forward_released);
+	bind_key_released(InputKey::S, this, &ClothCameraInputComponent::handle_move_backward_released);
+	bind_key_released(InputKey::Down, this, &ClothCameraInputComponent::handle_move_backward_released);
+	bind_key_released(InputKey::A, this, &ClothCameraInputComponent::handle_move_left_released);
+	bind_key_released(InputKey::Left, this, &ClothCameraInputComponent::handle_move_left_released);
+	bind_key_released(InputKey::D, this, &ClothCameraInputComponent::handle_move_right_released);
+	bind_key_released(InputKey::Right, this, &ClothCameraInputComponent::handle_move_right_released);
+	bind_key_released(InputKey::E, this, &ClothCameraInputComponent::handle_move_up_released);
+	bind_key_released(InputKey::Q, this, &ClothCameraInputComponent::handle_move_down_released);
+
+	bind_pointer_pressed(PointerButton::Left, this, &ClothCameraInputComponent::handle_left_pointer_pressed);
+	bind_pointer_released(PointerButton::Left, this, &ClothCameraInputComponent::handle_left_pointer_released);
+	bind_pointer_moved(this, &ClothCameraInputComponent::handle_pointer_moved);
+	bind_wheel_scrolled(this, &ClothCameraInputComponent::handle_wheel_scrolled);
+}
+
 void ClothCameraInputComponent::start()
 {
 	initialize_focus_target();
@@ -48,92 +78,106 @@ void ClothCameraInputComponent::update(float delta_time)
 	move_camera(delta_time);
 }
 
-bool ClothCameraInputComponent::on_key_pressed(const KeyInputEvent& event)
+bool ClothCameraInputComponent::handle_move_forward_pressed(const KeyInputEvent& event)
 {
-	switch (event.key)
-	{
-	case InputKey::W:
-	case InputKey::Up:
-		moving_forward_ = true;
-		return true;
-	case InputKey::S:
-	case InputKey::Down:
-		moving_backward_ = true;
-		return true;
-	case InputKey::A:
-	case InputKey::Left:
-		moving_left_ = true;
-		return true;
-	case InputKey::D:
-	case InputKey::Right:
-		moving_right_ = true;
-		return true;
-	case InputKey::E:
-		moving_up_ = true;
-		return true;
-	case InputKey::Q:
-		moving_down_ = true;
-		return true;
-	default:
-		return false;
-	}
+	static_cast<void>(event);
+	moving_forward_ = true;
+	return true;
 }
 
-bool ClothCameraInputComponent::on_key_released(const KeyInputEvent& event)
+bool ClothCameraInputComponent::handle_move_forward_released(const KeyInputEvent& event)
 {
-	switch (event.key)
-	{
-	case InputKey::W:
-	case InputKey::Up:
-		moving_forward_ = false;
-		return true;
-	case InputKey::S:
-	case InputKey::Down:
-		moving_backward_ = false;
-		return true;
-	case InputKey::A:
-	case InputKey::Left:
-		moving_left_ = false;
-		return true;
-	case InputKey::D:
-	case InputKey::Right:
-		moving_right_ = false;
-		return true;
-	case InputKey::E:
-		moving_up_ = false;
-		return true;
-	case InputKey::Q:
-		moving_down_ = false;
-		return true;
-	default:
-		return false;
-	}
+	static_cast<void>(event);
+	moving_forward_ = false;
+	return true;
 }
 
-bool ClothCameraInputComponent::on_pointer_pressed(const PointerInputEvent& event)
+bool ClothCameraInputComponent::handle_move_backward_pressed(const KeyInputEvent& event)
 {
-	if (event.button != PointerButton::Left)
-	{
-		return false;
-	}
+	static_cast<void>(event);
+	moving_backward_ = true;
+	return true;
+}
 
+bool ClothCameraInputComponent::handle_move_backward_released(const KeyInputEvent& event)
+{
+	static_cast<void>(event);
+	moving_backward_ = false;
+	return true;
+}
+
+bool ClothCameraInputComponent::handle_move_left_pressed(const KeyInputEvent& event)
+{
+	static_cast<void>(event);
+	moving_left_ = true;
+	return true;
+}
+
+bool ClothCameraInputComponent::handle_move_left_released(const KeyInputEvent& event)
+{
+	static_cast<void>(event);
+	moving_left_ = false;
+	return true;
+}
+
+bool ClothCameraInputComponent::handle_move_right_pressed(const KeyInputEvent& event)
+{
+	static_cast<void>(event);
+	moving_right_ = true;
+	return true;
+}
+
+bool ClothCameraInputComponent::handle_move_right_released(const KeyInputEvent& event)
+{
+	static_cast<void>(event);
+	moving_right_ = false;
+	return true;
+}
+
+bool ClothCameraInputComponent::handle_move_up_pressed(const KeyInputEvent& event)
+{
+	static_cast<void>(event);
+	moving_up_ = true;
+	return true;
+}
+
+bool ClothCameraInputComponent::handle_move_up_released(const KeyInputEvent& event)
+{
+	static_cast<void>(event);
+	moving_up_ = false;
+	return true;
+}
+
+bool ClothCameraInputComponent::handle_move_down_pressed(const KeyInputEvent& event)
+{
+	static_cast<void>(event);
+	moving_down_ = true;
+	return true;
+}
+
+bool ClothCameraInputComponent::handle_move_down_released(const KeyInputEvent& event)
+{
+	static_cast<void>(event);
+	moving_down_ = false;
+	return true;
+}
+
+bool ClothCameraInputComponent::handle_left_pointer_pressed(const PointerInputEvent& event)
+{
+	static_cast<void>(event);
 	rotating_camera_ = true;
 	initialize_focus_target();
 	return true;
 }
 
-bool ClothCameraInputComponent::on_pointer_released(const PointerInputEvent& event)
+bool ClothCameraInputComponent::handle_left_pointer_released(const PointerInputEvent& event)
 {
-	if (event.button != PointerButton::Left)
-	{
-		return false;
-	}
-
+	static_cast<void>(event);
 	rotating_camera_ = false;
 	return true;
 }
 
-bool ClothCameraInputComponent::on_pointer_moved(const PointerInputEvent& event)
+bool ClothCameraInputComponent::handle_pointer_moved(const PointerInputEvent& event)
 {
 	if (!rotating_camera_)
 	{
@@ -144,7 +188,7 @@ bool ClothCameraInputComponent::on_pointer_moved(const PointerInputEvent& event)
 	return true;
 }
 
-bool ClothCameraInputComponent::on_wheel_scrolled(const WheelInputEvent& event)
+bool ClothCameraInputComponent::handle_wheel_scrolled(const WheelInputEvent& event)
 {
 	if (event.steps == 0.0f)
 	{
