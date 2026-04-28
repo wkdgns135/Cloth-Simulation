@@ -156,26 +156,6 @@ bool World::handle_wheel_scrolled(const WheelInputEvent& event)
 	});
 }
 
-CameraObject& World::main_camera()
-{
-	return *main_camera_object_;
-}
-
-const CameraObject& World::main_camera() const
-{
-	return *main_camera_object_;
-}
-
-DirectionalLightObject& World::main_directional_light()
-{
-	return *main_directional_light_object_;
-}
-
-const DirectionalLightObject& World::main_directional_light() const
-{
-	return *main_directional_light_object_;
-}
-
 void World::set_main_camera(CameraObject& camera_object)
 {
 	main_camera_object_ = &camera_object;

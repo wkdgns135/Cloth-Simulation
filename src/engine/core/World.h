@@ -63,19 +63,15 @@ public:
 
 	RenderScene build_render_scene() const;
 
-	CameraObject& main_camera();
-	const CameraObject& main_camera() const;
-
-	DirectionalLightObject& main_directional_light();
-	const DirectionalLightObject& main_directional_light() const;
-
+protected:
 	void set_main_camera(CameraObject& camera_object);
 	void set_main_directional_light(DirectionalLightObject& directional_light_object);
 
-private:
 	std::vector<std::unique_ptr<Object>> objects_;
 	CameraObject* main_camera_object_ = nullptr;
 	DirectionalLightObject* main_directional_light_object_ = nullptr;
+
+private:
 	bool awakened_ = false;
 	bool started_ = false;
 	bool destroyed_ = false;
