@@ -20,6 +20,9 @@ set(APP_SOURCES
 set(ENGINE_SOURCES
     src/engine/Engine.h
     src/engine/Engine.cpp
+    src/engine/components/InputComponent.h
+    src/engine/components/RenderComponent.h
+    src/engine/components/SimulationComponent.h
     src/engine/core/Component.h
     src/engine/core/Object.h
     src/engine/core/Object.cpp
@@ -27,13 +30,11 @@ set(ENGINE_SOURCES
     src/engine/core/World.h
     src/engine/core/World.cpp
     src/engine/lifecycle/Lifecycle.h
-    src/engine/render/RenderComponent.h
     src/engine/render/Renderer.h
     src/engine/render/Renderer.cpp
     src/engine/render/RenderScene.h
     src/engine/render/RenderSystem.h
     src/engine/render/RenderSystem.cpp
-    src/engine/simulation/SimulationComponent.h
 )
 
 set(CLOTH_SOURCES
@@ -41,6 +42,8 @@ set(CLOTH_SOURCES
     src/cloth/ClothWorld.cpp
     src/cloth/ClothObject.h
     src/cloth/ClothObject.cpp
+    src/cloth/components/ClothInteractionComponent.h
+    src/cloth/components/ClothInteractionComponent.cpp
     src/cloth/components/ClothRenderComponent.h
     src/cloth/components/ClothRenderComponent.cpp
     src/cloth/components/PBDClothSimulationComponent.h

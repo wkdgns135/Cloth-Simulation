@@ -1,5 +1,22 @@
 #include "engine/core/World.h"
 
+namespace
+{
+template <typename Callback>
+bool dispatch_input_to_objects(std::vector<std::unique_ptr<Object>>& objects, Callback&& callback)
+{
+	for (auto it = objects.rbegin(); it != objects.rend(); ++it)
+	{
+		if (callback(*(*it)))
+		{
+			return true;
+		}
+	}
+
+	return false;
+}
+}
+
 void World::awake()
 {
 	if (awakened_)
@@ -71,6 +88,55 @@ void World::destroy()
 
 	destroyed_ = true;
 	awakened_ = false;
+}
+
+bool World::handle_key_pressed(const KeyInputEvent& event)
+{
+	return dispatch_input_to_objects(objects_, [&](Object& object) {
+		return object.handle_key_pressed(event);
+	});
+}
+
+bool World::handle_key_released(const KeyInputEvent& event)
+{
+	return dispatch_input_to_objects(objects_, [&](Object& object) {
+		return object.handle_key_released(event);
+	});
+}
+
+bool World::handle_pointer_pressed(const PointerInputEvent& event)
+{
+	return dispatch_input_to_objects(objects_, [&](Object& object) {
+		return object.handle_pointer_pressed(event);
+	});
+}
+
+bool World::handle_pointer_released(const PointerInputEvent& event)
+{
+	return dispatch_input_to_objects(objects_, [&](Object& object) {
+		return object.handle_pointer_released(event);
+	});
+}
+
+bool World::handle_pointer_moved(const PointerInputEvent& event)
+{
+	return dispatch_input_to_objects(objects_, [&](Object& object) {
+		return object.handle_pointer_moved(event);
+	});
+}
+
+bool World::handle_click(const ClickInputEvent& event)
+{
+	return dispatch_input_to_objects(objects_, [&](Object& object) {
+		return object.handle_click(event);
+	});
+}
+
+bool World::handle_wheel_scrolled(const WheelInputEvent& event)
+{
+	return dispatch_input_to_objects(objects_, [&](Object& object) {
+		return object.handle_wheel_scrolled(event);
+	});
 }
 
 RenderScene World::build_render_scene() const

@@ -10,6 +10,10 @@
 #include "engine/lifecycle/Lifecycle.h"
 
 struct RenderScene;
+struct KeyInputEvent;
+struct PointerInputEvent;
+struct ClickInputEvent;
+struct WheelInputEvent;
 
 class Object : public Lifecycle
 {
@@ -27,6 +31,13 @@ public:
 	void destroy() override;
 
 	void collect_render_data(RenderScene& scene) const;
+	bool handle_key_pressed(const KeyInputEvent& event);
+	bool handle_key_released(const KeyInputEvent& event);
+	bool handle_pointer_pressed(const PointerInputEvent& event);
+	bool handle_pointer_released(const PointerInputEvent& event);
+	bool handle_pointer_moved(const PointerInputEvent& event);
+	bool handle_click(const ClickInputEvent& event);
+	bool handle_wheel_scrolled(const WheelInputEvent& event);
 
 	Transform& transform() { return transform_; }
 	const Transform& transform() const { return transform_; }

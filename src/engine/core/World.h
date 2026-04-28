@@ -9,6 +9,11 @@
 #include "engine/core/Object.h"
 #include "engine/render/RenderScene.h"
 
+struct KeyInputEvent;
+struct PointerInputEvent;
+struct ClickInputEvent;
+struct WheelInputEvent;
+
 class World : public Lifecycle
 {
 public:
@@ -45,6 +50,14 @@ public:
 
 		return result;
 	}
+
+	bool handle_key_pressed(const KeyInputEvent& event);
+	bool handle_key_released(const KeyInputEvent& event);
+	bool handle_pointer_pressed(const PointerInputEvent& event);
+	bool handle_pointer_released(const PointerInputEvent& event);
+	bool handle_pointer_moved(const PointerInputEvent& event);
+	bool handle_click(const ClickInputEvent& event);
+	bool handle_wheel_scrolled(const WheelInputEvent& event);
 
 	RenderScene build_render_scene() const;
 

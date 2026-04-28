@@ -1,6 +1,27 @@
 #include "engine/core/Object.h"
 
-#include "engine/render/RenderComponent.h"
+#include "engine/components/InputComponent.h"
+#include "engine/components/RenderComponent.h"
+
+namespace
+{
+template <typename Callback>
+bool dispatch_input_event(std::vector<std::unique_ptr<Component>>& components, Callback&& callback)
+{
+	for (auto it = components.rbegin(); it != components.rend(); ++it)
+	{
+		if (InputComponent* input_component = dynamic_cast<InputComponent*>(it->get()))
+		{
+			if (callback(*input_component))
+			{
+				return true;
+			}
+		}
+	}
+
+	return false;
+}
+}
 
 void Object::add_component(std::unique_ptr<Component> component)
 {
@@ -105,4 +126,53 @@ void Object::collect_render_data(RenderScene& scene) const
 			render_component->collect_render_data(scene);
 		}
 	}
+}
+
+bool Object::handle_key_pressed(const KeyInputEvent& event)
+{
+	return dispatch_input_event(components_, [&](InputComponent& input_component) {
+		return input_component.on_key_pressed(event);
+	});
+}
+
+bool Object::handle_key_released(const KeyInputEvent& event)
+{
+	return dispatch_input_event(components_, [&](InputComponent& input_component) {
+		return input_component.on_key_released(event);
+	});
+}
+
+bool Object::handle_pointer_pressed(const PointerInputEvent& event)
+{
+	return dispatch_input_event(components_, [&](InputComponent& input_component) {
+		return input_component.on_pointer_pressed(event);
+	});
+}
+
+bool Object::handle_pointer_released(const PointerInputEvent& event)
+{
+	return dispatch_input_event(components_, [&](InputComponent& input_component) {
+		return input_component.on_pointer_released(event);
+	});
+}
+
+bool Object::handle_pointer_moved(const PointerInputEvent& event)
+{
+	return dispatch_input_event(components_, [&](InputComponent& input_component) {
+		return input_component.on_pointer_moved(event);
+	});
+}
+
+bool Object::handle_click(const ClickInputEvent& event)
+{
+	return dispatch_input_event(components_, [&](InputComponent& input_component) {
+		return input_component.on_click(event);
+	});
+}
+
+bool Object::handle_wheel_scrolled(const WheelInputEvent& event)
+{
+	return dispatch_input_event(components_, [&](InputComponent& input_component) {
+		return input_component.on_wheel_scrolled(event);
+	});
 }

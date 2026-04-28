@@ -1,6 +1,6 @@
 #pragma once
 
-#include "engine/render/RenderComponent.h"
+#include "engine/components/RenderComponent.h"
 
 class Cloth;
 

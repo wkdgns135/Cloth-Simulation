@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <vector>
 
+#include "cloth/components/ClothInteractionComponent.h"
 #include "cloth/components/ClothRenderComponent.h"
 #include "io/MeshLoader.h"
 
@@ -49,6 +50,7 @@ ClothObject::ClothObject(int width, int height, float spacing)
 {
 	pin_grid_top_row(cloth_);
 	add_component<ClothRenderComponent>(cloth_);
+	add_component<ClothInteractionComponent>(cloth_);
 }
 
 ClothObject::ClothObject(const std::filesystem::path& mesh_path)
@@ -56,4 +58,5 @@ ClothObject::ClothObject(const std::filesystem::path& mesh_path)
 {
 	pin_highest_particles(cloth_, 2);
 	add_component<ClothRenderComponent>(cloth_);
+	add_component<ClothInteractionComponent>(cloth_);
 }

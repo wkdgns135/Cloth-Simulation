@@ -5,7 +5,7 @@
 
 #include <glm/glm.hpp>
 
-#include "engine/simulation/SimulationComponent.h"
+#include "engine/components/SimulationComponent.h"
 
 class Cloth;
 
