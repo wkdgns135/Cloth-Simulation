@@ -21,6 +21,9 @@ public:
 	void toggle_anchor_state();
 	bool hit_test(const glm::vec3& ray_origin, const glm::vec3& ray_direction, float& hit_distance) const override;
 
+protected:
+	bool on_click(const ClickInputEvent& event) override;
+	
 private:
 	void cache_initial_state();
 	void refresh_initial_state_if_needed();

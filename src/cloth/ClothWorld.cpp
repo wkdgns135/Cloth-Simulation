@@ -24,7 +24,7 @@ ClothWorld::ClothWorld()
 	// pbd_cloth.add_component<PBDClothSimulationComponent>(pbd_cloth.cloth());
 	// pbd_cloth.transform().position = glm::vec3(-3.f, 0.0f, 0.0f);
 
-	ClothObject& xpbd_cloth = create_object<ClothObject>("root/asset/test_cloth_patch.obj");
-	xpbd_cloth.add_component<XPBDClothSimulationComponent>(xpbd_cloth.cloth());
-	xpbd_cloth.transform().position = glm::vec3(3.f, 0.0f, 0.0f);
+	ClothObject& xpbd_cloth = create_object<ClothObject>("asset/test_cloth_patch.obj");
+	xpbd_cloth.add_component<PBDClothSimulationComponent>(xpbd_cloth.cloth());
+	xpbd_cloth.transform().position = glm::vec3(0.0f, 0.0f, 0.0f);
 }

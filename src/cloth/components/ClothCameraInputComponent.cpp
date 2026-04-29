@@ -47,8 +47,8 @@ ClothCameraInputComponent::ClothCameraInputComponent()
 	bind_key_released(InputKey::E, this, &ClothCameraInputComponent::handle_move_up_released);
 	bind_key_released(InputKey::Q, this, &ClothCameraInputComponent::handle_move_down_released);
 
-	bind_pointer_pressed(PointerButton::Left, this, &ClothCameraInputComponent::handle_left_pointer_pressed);
-	bind_pointer_released(PointerButton::Left, this, &ClothCameraInputComponent::handle_left_pointer_released);
+	bind_pointer_pressed(PointerButton::Right, this, &ClothCameraInputComponent::handle_right_pointer_pressed);
+	bind_pointer_released(PointerButton::Right, this, &ClothCameraInputComponent::handle_right_pointer_released);
 	bind_pointer_moved(this, &ClothCameraInputComponent::handle_pointer_moved);
 	bind_wheel_scrolled(this, &ClothCameraInputComponent::handle_wheel_scrolled);
 }
@@ -162,7 +162,7 @@ bool ClothCameraInputComponent::handle_move_down_released(const KeyInputEvent& e
 	return true;
 }
 
-bool ClothCameraInputComponent::handle_left_pointer_pressed(const PointerInputEvent& event)
+bool ClothCameraInputComponent::handle_right_pointer_pressed(const PointerInputEvent& event)
 {
 	static_cast<void>(event);
 	rotating_camera_ = true;
@@ -170,7 +170,7 @@ bool ClothCameraInputComponent::handle_left_pointer_pressed(const PointerInputEv
 	return true;
 }
 
-bool ClothCameraInputComponent::handle_left_pointer_released(const PointerInputEvent& event)
+bool ClothCameraInputComponent::handle_right_pointer_released(const PointerInputEvent& event)
 {
 	static_cast<void>(event);
 	rotating_camera_ = false;

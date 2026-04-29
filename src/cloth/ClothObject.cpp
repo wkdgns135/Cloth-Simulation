@@ -4,9 +4,13 @@
 #include <cstddef>
 #include <cmath>
 #include <vector>
+#include <iostream>
+#include <qtextstream.h>
 
-#include "cloth/components/ClothInteractionComponent.h"
-#include "cloth/components/ClothRenderComponent.h"
+#include <glm/ext/scalar_relational.hpp>
+#include "components/ClothInteractionComponent.h"
+#include "components/ClothRenderComponent.h"
+#include "components/ClothSimulationComponentBase.h"
 #include "io/MeshLoader.h"
 
 namespace
@@ -21,30 +25,26 @@ void pin_grid_top_row(Cloth& cloth)
 	}
 }
 
-void pin_highest_particles(Cloth& cloth, int count)
+void pin_highest_particles(Cloth& cloth)
 {
 	auto& particles = cloth.get_particles();
-	if (particles.empty() || count <= 0)
+	if (particles.empty())
 	{
 		return;
 	}
 
-	std::vector<int> sorted_indices;
-	sorted_indices.reserve(particles.size());
-	for (int i = 0; i < static_cast<int>(particles.size()); ++i)
+	float max_height = 0.0f;
+	for (const Particle& particle : particles)
 	{
-		sorted_indices.push_back(i);
+		max_height = std::max(max_height, particle.position.y);
 	}
-
-	std::sort(sorted_indices.begin(), sorted_indices.end(), [&](int lhs, int rhs)
-		{
-			return particles[lhs].position.y > particles[rhs].position.y;
-		});
-
-	const int pinned_count = std::min(count, static_cast<int>(sorted_indices.size()));
-	for (int i = 0; i < pinned_count; ++i)
+	
+	for (Particle& particle : particles)
 	{
-		cloth.set_fixed(sorted_indices[i], true);
+		if (glm::equal(particle.position.y, max_height, 1e-5f))
+		{
+			particle.is_fixed = true;
+		}
 	}
 }
 
@@ -104,7 +104,7 @@ ClothObject::ClothObject(int width, int height, float spacing)
 ClothObject::ClothObject(const std::filesystem::path& mesh_path)
 	: cloth_(io::load_cloth(mesh_path))
 {
-	pin_highest_particles(cloth_, 2);
+	pin_highest_particles(cloth_);
 	cache_initial_state();
 	add_component<ClothRenderComponent>(cloth_);
 	add_component<ClothInteractionComponent>(*this);
@@ -183,6 +183,15 @@ bool ClothObject::hit_test(const glm::vec3& ray_origin, const glm::vec3& ray_dir
 	}
 
 	return has_hit;
+}
+
+bool ClothObject::on_click(const ClickInputEvent& event)
+{
+	std::cout << "ClothObject::on_click" << std::endl;
+	
+	ClothSimulationComponentBase *ClothSimulator = get_components<ClothSimulationComponentBase>().front();
+	ClothSimulator->add_external_acceleration({0, 0, -100});
+	return Object::on_click(event);
 }
 
 void ClothObject::cache_initial_state()

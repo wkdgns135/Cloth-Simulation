@@ -25,8 +25,8 @@ private:
 	bool handle_move_up_released(const KeyInputEvent& event);
 	bool handle_move_down_pressed(const KeyInputEvent& event);
 	bool handle_move_down_released(const KeyInputEvent& event);
-	bool handle_left_pointer_pressed(const PointerInputEvent& event);
-	bool handle_left_pointer_released(const PointerInputEvent& event);
+	bool handle_right_pointer_pressed(const PointerInputEvent& event);
+	bool handle_right_pointer_released(const PointerInputEvent& event);
 	bool handle_pointer_moved(const PointerInputEvent& event);
 	bool handle_wheel_scrolled(const WheelInputEvent& event);
 

@@ -53,6 +53,8 @@ set(CLOTH_SOURCES
     src/cloth/components/ClothInteractionComponent.cpp
     src/cloth/components/ClothRenderComponent.h
     src/cloth/components/ClothRenderComponent.cpp
+    src/cloth/components/ClothSimulationComponentBase.h
+    src/cloth/components/ClothSimulationComponentBase.cpp
     src/cloth/components/PBDClothSimulationComponent.h
     src/cloth/components/PBDClothSimulationComponent.cpp
     src/cloth/components/XPBDClothSimulationComponent.h
@@ -96,10 +98,10 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
 
 add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
     COMMAND "${CMAKE_COMMAND}" -E make_directory
-        "$<TARGET_FILE_DIR:${PROJECT_NAME}>/root/asset"
+        "$<TARGET_FILE_DIR:${PROJECT_NAME}>/asset"
     COMMAND "${CMAKE_COMMAND}" -E copy_directory
-        "${CMAKE_SOURCE_DIR}/root/asset"
-        "$<TARGET_FILE_DIR:${PROJECT_NAME}>/root/asset"
+        "${CMAKE_SOURCE_DIR}/asset"
+        "$<TARGET_FILE_DIR:${PROJECT_NAME}>/asset"
     COMMENT "Copying runtime assets"
 )
 
