@@ -1,21 +1,31 @@
 #include "cloth/ClothObject.h"
 
 #include <algorithm>
-#include <cstddef>
 #include <cmath>
+#include <cstddef>
+#include <sstream>
 #include <vector>
-#include <iostream>
-#include <qtextstream.h>
 
 #include <glm/ext/scalar_relational.hpp>
+
+#include "cloth/ClothWorld.h"
 #include "components/ClothInteractionComponent.h"
 #include "components/ClothRenderComponent.h"
 #include "components/ClothSimulationComponentBase.h"
+#include "components/PBDClothSimulationComponent.h"
+#include "components/XPBDClothSimulationComponent.h"
 #include "io/MeshLoader.h"
 
 namespace
 {
 constexpr float kRayIntersectionEpsilon = 0.000001f;
+
+std::string make_grid_source_label(int width, int height, float spacing)
+{
+	std::ostringstream stream;
+	stream << width << " x " << height << " @ " << spacing;
+	return stream.str();
+}
 
 void pin_grid_top_row(Cloth& cloth)
 {
@@ -92,8 +102,12 @@ bool intersect_triangle(
 }
 }
 
-ClothObject::ClothObject(int width, int height, float spacing)
-	: cloth_(width, height, spacing)
+ClothObject::ClothObject(ClothId cloth_id, std::string display_name, int width, int height, float spacing)
+	: cloth_id_(cloth_id)
+	, display_name_(std::move(display_name))
+	, source_label_(make_grid_source_label(width, height, spacing))
+	, source_kind_(ClothSourceKind::Grid)
+	, cloth_(width, height, spacing)
 {
 	pin_grid_top_row(cloth_);
 	cache_initial_state();
@@ -101,13 +115,39 @@ ClothObject::ClothObject(int width, int height, float spacing)
 	add_component<ClothInteractionComponent>(*this);
 }
 
-ClothObject::ClothObject(const std::filesystem::path& mesh_path)
-	: cloth_(io::load_cloth(mesh_path))
+ClothObject::ClothObject(ClothId cloth_id, std::string display_name, const std::filesystem::path& mesh_path)
+	: cloth_id_(cloth_id)
+	, display_name_(std::move(display_name))
+	, source_label_(mesh_path.filename().string())
+	, source_kind_(ClothSourceKind::Mesh)
+	, cloth_(io::load_cloth(mesh_path))
 {
 	pin_highest_particles(cloth_);
 	cache_initial_state();
 	add_component<ClothRenderComponent>(cloth_);
 	add_component<ClothInteractionComponent>(*this);
+}
+
+ClothSolverKind ClothObject::solver_kind() const
+{
+	if (!get_components<XPBDClothSimulationComponent>().empty())
+	{
+		return ClothSolverKind::XPBD;
+	}
+
+	return ClothSolverKind::PBD;
+}
+
+ClothSimulationComponentBase* ClothObject::simulation_component()
+{
+	const std::vector<ClothSimulationComponentBase*> components = get_components<ClothSimulationComponentBase>();
+	return components.empty() ? nullptr : components.front();
+}
+
+const ClothSimulationComponentBase* ClothObject::simulation_component() const
+{
+	const std::vector<const ClothSimulationComponentBase*> components = get_components<ClothSimulationComponentBase>();
+	return components.empty() ? nullptr : components.front();
 }
 
 void ClothObject::reset_to_initial_state()
@@ -187,11 +227,15 @@ bool ClothObject::hit_test(const glm::vec3& ray_origin, const glm::vec3& ray_dir
 
 bool ClothObject::on_click(const ClickInputEvent& event)
 {
-	std::cout << "ClothObject::on_click" << std::endl;
-	
-	ClothSimulationComponentBase *ClothSimulator = get_components<ClothSimulationComponentBase>().front();
-	ClothSimulator->add_external_acceleration({0, 0, -100});
-	return Object::on_click(event);
+	static_cast<void>(event);
+
+	if (ClothWorld* cloth_world = dynamic_cast<ClothWorld*>(world()))
+	{
+		cloth_world->select_cloth(cloth_id_);
+		return true;
+	}
+
+	return false;
 }
 
 void ClothObject::cache_initial_state()

@@ -69,6 +69,12 @@ set(IO_SOURCES
 )
 
 set(PLATFORM_QT_SOURCES
+    src/platform/qt/ClothEditorController.h
+    src/platform/qt/ClothEditorController.cpp
+    src/platform/qt/ClothHierarchyDock.h
+    src/platform/qt/ClothHierarchyDock.cpp
+    src/platform/qt/ClothInspectorDock.h
+    src/platform/qt/ClothInspectorDock.cpp
     src/platform/qt/MainWindow.h
     src/platform/qt/MainWindow.cpp
     src/platform/qt/ViewportWidget.h

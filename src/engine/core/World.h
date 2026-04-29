@@ -53,6 +53,44 @@ public:
 		return result;
 	}
 
+	template <typename T>
+	std::vector<T*> get_objects()
+	{
+		static_assert(std::is_base_of_v<Object, T>);
+
+		std::vector<T*> result;
+		result.reserve(objects_.size());
+
+		for (const std::unique_ptr<Object>& object : objects_)
+		{
+			if (T* typed_object = dynamic_cast<T*>(object.get()))
+			{
+				result.push_back(typed_object);
+			}
+		}
+
+		return result;
+	}
+
+	template <typename T>
+	std::vector<const T*> get_objects() const
+	{
+		static_assert(std::is_base_of_v<Object, T>);
+
+		std::vector<const T*> result;
+		result.reserve(objects_.size());
+
+		for (const std::unique_ptr<Object>& object : objects_)
+		{
+			if (const T* typed_object = dynamic_cast<const T*>(object.get()))
+			{
+				result.push_back(typed_object);
+			}
+		}
+
+		return result;
+	}
+
 	bool on_key_pressed(const KeyInputEvent& event);
 	bool on_key_released(const KeyInputEvent& event);
 	bool on_pointer_pressed(const PointerInputEvent& event);
@@ -72,6 +110,7 @@ protected:
 	virtual bool native_on_pointer_moved(const PointerInputEvent& event);
 	virtual bool native_on_click(const ClickInputEvent& event);
 	virtual bool native_on_wheel_scrolled(const WheelInputEvent& event);
+	bool destroy_object(Object* object);
 
 	std::vector<std::unique_ptr<Object>> objects_;
 	bool awakened_ = false;

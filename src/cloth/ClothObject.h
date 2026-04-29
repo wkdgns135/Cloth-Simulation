@@ -2,20 +2,46 @@
 
 #include <cstdint>
 #include <filesystem>
+#include <string>
 #include <vector>
 
-#include "cloth/core/Particle.h"
 #include "cloth/core/Cloth.h"
+#include "cloth/core/Particle.h"
 #include "engine/core/Object.h"
+
+class ClothSimulationComponentBase;
+
+using ClothId = std::uint64_t;
+
+enum class ClothSourceKind
+{
+	Grid,
+	Mesh,
+};
+
+enum class ClothSolverKind
+{
+	PBD,
+	XPBD,
+};
 
 class ClothObject final : public Object
 {
 public:
-	ClothObject(int width, int height, float spacing);
-	explicit ClothObject(const std::filesystem::path& mesh_path);
+	ClothObject(ClothId cloth_id, std::string display_name, int width, int height, float spacing);
+	ClothObject(ClothId cloth_id, std::string display_name, const std::filesystem::path& mesh_path);
+
+	ClothId cloth_id() const { return cloth_id_; }
+	const std::string& display_name() const { return display_name_; }
+	const std::string& source_label() const { return source_label_; }
+	ClothSourceKind source_kind() const { return source_kind_; }
+	bool anchors_enabled() const { return anchors_enabled_; }
+	ClothSolverKind solver_kind() const;
 
 	Cloth& cloth() { return cloth_; }
 	const Cloth& cloth() const { return cloth_; }
+	ClothSimulationComponentBase* simulation_component();
+	const ClothSimulationComponentBase* simulation_component() const;
 
 	void reset_to_initial_state();
 	void toggle_anchor_state();
@@ -28,6 +54,10 @@ private:
 	void cache_initial_state();
 	void refresh_initial_state_if_needed();
 
+	ClothId cloth_id_ = 0;
+	std::string display_name_;
+	std::string source_label_;
+	ClothSourceKind source_kind_ = ClothSourceKind::Grid;
 	Cloth cloth_;
 	std::vector<Particle> initial_particles_;
 	std::uint64_t cached_topology_revision_ = 0;

@@ -536,3 +536,28 @@ bool World::native_on_wheel_scrolled(const WheelInputEvent& event)
 	static_cast<void>(event);
 	return false;
 }
+
+bool World::destroy_object(Object* object)
+{
+	if (!object)
+	{
+		return false;
+	}
+
+	const auto it = std::find_if(objects_.begin(), objects_.end(), [&](const std::unique_ptr<Object>& candidate) {
+		return candidate.get() == object;
+	});
+	if (it == objects_.end())
+	{
+		return false;
+	}
+
+	if (hovered_object_ == object)
+	{
+		hovered_object_ = nullptr;
+	}
+
+	(*it)->destroy();
+	objects_.erase(it);
+	return true;
+}
