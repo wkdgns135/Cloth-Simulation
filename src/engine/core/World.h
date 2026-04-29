@@ -99,6 +99,7 @@ public:
 	bool on_click(const ClickInputEvent& event);
 	bool on_wheel_scrolled(const WheelInputEvent& event);
 	void set_viewport_size(int width, int height);
+	void request_destroy_object(Object* object);
 
 	RenderScene build_render_scene() const;
 
@@ -142,6 +143,9 @@ private:
 	void unsubscribe_wheel_scrolled(InputSubscriptionHandle handle);
 	Object* pick_object(const PointerPosition& position) const;
 	void update_hovered_object(const PointerPosition& position);
+	bool destroy_object_immediate(Object* object);
+	void flush_destroy_requests();
+	bool is_destroy_queued(const Object* object) const;
 
 	std::array<std::vector<InputListenerEntry<InputComponent::KeyHandler>>, kInputKeyCount> key_pressed_listeners_;
 	std::array<std::vector<InputListenerEntry<InputComponent::KeyHandler>>, kInputKeyCount> key_released_listeners_;
@@ -153,6 +157,8 @@ private:
 	Object* hovered_object_ = nullptr;
 	int viewport_width_ = 1;
 	int viewport_height_ = 1;
+	bool updating_ = false;
+	std::vector<Object*> pending_destroy_objects_;
 
 	friend class InputComponent;
 };

@@ -21,6 +21,7 @@ private:
 	void refresh();
 	void create_grid_cloth();
 	void create_mesh_cloth();
+	void spawn_sphere();
 
 	ClothEditorController& controller_;
 	QListWidget* cloth_list_widget_ = nullptr;

@@ -47,6 +47,7 @@ public:
 
 	void create_grid_cloth(int width, int height, float spacing, ClothSolverKind solver_kind);
 	void create_mesh_cloth(const std::filesystem::path& mesh_path, ClothSolverKind solver_kind);
+	void spawn_sphere_from_view();
 	void set_selected_cloth(std::uint64_t cloth_id);
 	void update_selected_cloth_position(float x, float y, float z);
 	void update_selected_cloth_simulation_settings(float damping, int constraint_iterations);

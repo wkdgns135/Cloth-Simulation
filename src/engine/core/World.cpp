@@ -127,10 +127,43 @@ void World::start()
 
 void World::update(float delta_time)
 {
-	for (std::size_t i = 0; i < objects_.size(); ++i)
+	updating_ = true;
+
+	std::vector<Object*> update_objects;
+	update_objects.reserve(objects_.size());
+
+	for (const std::unique_ptr<Object>& object : objects_)
 	{
-		objects_[i]->update(delta_time);
+		if (!object)
+		{
+			continue;
+		}
+
+		Object* raw_object = object.get();
+		if (is_destroy_queued(raw_object) || raw_object->destroy_requested())
+		{
+			continue;
+		}
+
+		update_objects.push_back(raw_object);
 	}
+
+	std::stable_sort(update_objects.begin(), update_objects.end(), [](const Object* lhs, const Object* rhs) {
+		return lhs->update_order() < rhs->update_order();
+	});
+
+	for (Object* object : update_objects)
+	{
+		if (is_destroy_queued(object) || object->destroy_requested())
+		{
+			continue;
+		}
+
+		object->update(delta_time);
+	}
+
+	updating_ = false;
+	flush_destroy_requests();
 }
 
 void World::stop()
@@ -544,6 +577,37 @@ bool World::destroy_object(Object* object)
 		return false;
 	}
 
+	if (updating_)
+	{
+		request_destroy_object(object);
+		return true;
+	}
+
+	return destroy_object_immediate(object);
+}
+
+void World::request_destroy_object(Object* object)
+{
+	if (!object)
+	{
+		return;
+	}
+
+	if (is_destroy_queued(object))
+	{
+		return;
+	}
+
+	pending_destroy_objects_.push_back(object);
+}
+
+bool World::destroy_object_immediate(Object* object)
+{
+	if (!object)
+	{
+		return false;
+	}
+
 	const auto it = std::find_if(objects_.begin(), objects_.end(), [&](const std::unique_ptr<Object>& candidate) {
 		return candidate.get() == object;
 	});
@@ -560,4 +624,25 @@ bool World::destroy_object(Object* object)
 	(*it)->destroy();
 	objects_.erase(it);
 	return true;
+}
+
+void World::flush_destroy_requests()
+{
+	if (pending_destroy_objects_.empty())
+	{
+		return;
+	}
+
+	std::vector<Object*> destroy_queue;
+	destroy_queue.swap(pending_destroy_objects_);
+
+	for (Object* object : destroy_queue)
+	{
+		destroy_object_immediate(object);
+	}
+}
+
+bool World::is_destroy_queued(const Object* object) const
+{
+	return std::find(pending_destroy_objects_.begin(), pending_destroy_objects_.end(), object) != pending_destroy_objects_.end();
 }

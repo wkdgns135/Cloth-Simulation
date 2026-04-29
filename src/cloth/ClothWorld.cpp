@@ -1,5 +1,8 @@
 #include "cloth/ClothWorld.h"
 
+#include <algorithm>
+#include <limits>
+
 #include <glm/geometric.hpp>
 
 #include "cloth/components/ClothCameraInputComponent.h"
@@ -8,6 +11,37 @@
 #include "cloth/components/XPBDClothSimulationComponent.h"
 #include "engine/objects/CameraObject.h"
 #include "engine/objects/DirectionalLightObject.h"
+#include "engine/objects/PlaneObject.h"
+#include "engine/objects/SphereObject.h"
+
+namespace
+{
+constexpr float kDefaultCollisionPlaneClearance = 0.1f;
+constexpr float kSpawnSphereRadius = 0.5f;
+constexpr float kSpawnSphereSpeed = 3.5f;
+constexpr float kSpawnSphereForwardOffset = 0.45f;
+constexpr float kSpawnSphereMaxTravelDistance = 12.0f;
+
+float compute_default_floor_height(const ClothObject& cloth_object)
+{
+	const std::vector<Particle>& particles = cloth_object.cloth().get_particles();
+	if (particles.empty())
+	{
+		return -1.0f;
+	}
+
+	const glm::mat4 object_transform = cloth_object.transform().matrix();
+	float min_y = std::numeric_limits<float>::max();
+
+	for (const Particle& particle : particles)
+	{
+		const glm::vec3 world_position = glm::vec3(object_transform * glm::vec4(particle.position, 1.0f));
+		min_y = std::min(min_y, world_position.y);
+	}
+
+	return min_y - kDefaultCollisionPlaneClearance;
+}
+}
 
 ClothWorld::ClothWorld()
 {
@@ -22,6 +56,10 @@ ClothWorld::ClothWorld()
 
 	ClothObject& initial_cloth = create_mesh_cloth("asset/test_cloth_patch.obj", ClothSolverKind::PBD);
 	initial_cloth.transform().position = glm::vec3(0.0f, 0.0f, 0.0f);
+
+	PlaneObject& floor_object = create_object<PlaneObject>();
+	floor_object.transform().position = glm::vec3(0.0f, compute_default_floor_height(initial_cloth), 0.0f);
+	floor_object.transform().scale = glm::vec3(8.0f, 1.0f, 8.0f);
 }
 
 ClothObject& ClothWorld::create_grid_cloth(int width, int height, float spacing, ClothSolverKind solver_kind)
@@ -39,6 +77,39 @@ ClothObject& ClothWorld::create_grid_cloth(int width, int height, float spacing,
 	selected_cloth_id_ = cloth_id;
 	notify_changed();
 	return cloth_object;
+}
+
+PlaneObject& ClothWorld::create_plane_object(const glm::vec3& position, const glm::vec3& scale)
+{
+	PlaneObject& plane_object = create_object<PlaneObject>();
+	plane_object.transform().position = position;
+	plane_object.transform().scale = scale;
+	notify_changed();
+	return plane_object;
+}
+
+SphereObject& ClothWorld::create_sphere_object(float radius, const glm::vec3& position)
+{
+	SphereObject& sphere_object = create_object<SphereObject>(radius);
+	sphere_object.transform().position = position;
+	notify_changed();
+	return sphere_object;
+}
+
+void ClothWorld::spawn_sphere_projectile()
+{
+	if (!main_camera_object_)
+	{
+		return;
+	}
+
+	const glm::vec3 forward = main_camera_object_->transform().forward();
+	const glm::vec3 spawn_position = main_camera_object_->transform().position + forward * kSpawnSphereForwardOffset;
+
+	SphereObject& sphere_object = create_object<SphereObject>(kSpawnSphereRadius);
+	sphere_object.transform().position = spawn_position;
+	sphere_object.configure_projectile(forward * kSpawnSphereSpeed, kSpawnSphereMaxTravelDistance);
+	notify_changed();
 }
 
 ClothObject& ClothWorld::create_mesh_cloth(const std::filesystem::path& mesh_path, ClothSolverKind solver_kind)

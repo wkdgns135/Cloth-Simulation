@@ -99,6 +99,16 @@ void ClothEditorController::create_mesh_cloth(const std::filesystem::path& mesh_
 	});
 }
 
+void ClothEditorController::spawn_sphere_from_view()
+{
+	engine_.enqueue_world_job([](World& world) {
+		if (ClothWorld* cloth_world = dynamic_cast<ClothWorld*>(&world))
+		{
+			cloth_world->spawn_sphere_projectile();
+		}
+	});
+}
+
 void ClothEditorController::set_selected_cloth(std::uint64_t cloth_id)
 {
 	engine_.enqueue_world_job([cloth_id](World& world) {

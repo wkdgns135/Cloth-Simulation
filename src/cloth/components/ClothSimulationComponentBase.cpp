@@ -6,9 +6,13 @@
 #include <unordered_map>
 
 #include <glm/geometric.hpp>
+#include <glm/gtc/matrix_inverse.hpp>
 
 #include "cloth/core/Cloth.h"
 #include "cloth/core/Particle.h"
+#include "engine/core/Object.h"
+#include "engine/core/World.h"
+#include "engine/objects/CollisionObject.h"
 
 namespace
 {
@@ -372,4 +376,77 @@ float ClothSimulationComponentBase::per_iteration_stiffness(float stiffness) con
 	}
 
 	return 1.0f - std::pow(1.0f - clamped_stiffness, 1.0f / static_cast<float>(constraint_iterations_));
+}
+
+void ClothSimulationComponentBase::solve_collision_objects()
+{
+	if (!collision_enabled_)
+	{
+		return;
+	}
+
+	Object* object_owner = owner();
+	if (!object_owner || !object_owner->world())
+	{
+		return;
+	}
+
+	const std::vector<CollisionObject*> collision_objects = object_owner->world()->get_objects<CollisionObject>();
+	if (collision_objects.empty())
+	{
+		return;
+	}
+
+	auto& particles = cloth_.get_particles();
+
+	for (Particle& particle : particles)
+	{
+		if (particle.is_fixed)
+		{
+			continue;
+		}
+
+		glm::vec3 world_position = local_to_world_point(particle.position);
+		glm::vec3 world_prev_position = local_to_world_point(particle.prev_position);
+		bool collided = false;
+
+		for (const CollisionObject* collision_object : collision_objects)
+		{
+			if (!collision_object)
+			{
+				continue;
+			}
+
+			collided =
+				collision_object->resolve_particle_collision(world_position, world_prev_position, collision_margin_)
+				|| collided;
+		}
+
+		if (collided)
+		{
+			particle.position = world_to_local_point(world_position);
+			particle.prev_position = world_to_local_point(world_prev_position);
+		}
+	}
+}
+
+glm::vec3 ClothSimulationComponentBase::world_to_local_point(const glm::vec3& world_point) const
+{
+	if (const Object* object_owner = owner())
+	{
+		const glm::mat4 inverse_transform = glm::inverse(object_owner->transform().matrix());
+		return glm::vec3(inverse_transform * glm::vec4(world_point, 1.0f));
+	}
+
+	return world_point;
+}
+
+glm::vec3 ClothSimulationComponentBase::local_to_world_point(const glm::vec3& local_point) const
+{
+	if (const Object* object_owner = owner())
+	{
+		return glm::vec3(object_owner->transform().matrix() * glm::vec4(local_point, 1.0f));
+	}
+
+	return local_point;
 }

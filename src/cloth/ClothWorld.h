@@ -9,6 +9,9 @@
 #include "cloth/ClothObject.h"
 #include "engine/core/World.h"
 
+class PlaneObject;
+class SphereObject;
+
 class ClothWorld final : public World
 {
 public:
@@ -18,6 +21,9 @@ public:
 
 	ClothObject& create_grid_cloth(int width, int height, float spacing, ClothSolverKind solver_kind);
 	ClothObject& create_mesh_cloth(const std::filesystem::path& mesh_path, ClothSolverKind solver_kind);
+	PlaneObject& create_plane_object(const glm::vec3& position, const glm::vec3& scale = glm::vec3(8.0f, 1.0f, 8.0f));
+	SphereObject& create_sphere_object(float radius, const glm::vec3& position);
+	void spawn_sphere_projectile();
 	bool destroy_cloth(ClothId cloth_id);
 	bool select_cloth(ClothId cloth_id);
 	bool set_cloth_position(ClothId cloth_id, const glm::vec3& position);

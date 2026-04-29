@@ -70,6 +70,12 @@ public:
 	void set_constraint_iterations(int iterations) { constraint_iterations_ = std::max(0, iterations); }
 	int constraint_iterations() const { return constraint_iterations_; }
 
+	void set_collision_enabled(bool enabled) { collision_enabled_ = enabled; }
+	bool collision_enabled() const { return collision_enabled_; }
+
+	void set_collision_margin(float margin) { collision_margin_ = std::max(0.0f, margin); }
+	float collision_margin() const { return collision_margin_; }
+
 protected:
 	Cloth& cloth() { return cloth_; }
 	const Cloth& cloth() const { return cloth_; }
@@ -89,8 +95,12 @@ protected:
 		BendingConstraintEvaluation& evaluation) const;
 
 	float per_iteration_stiffness(float stiffness) const;
+	void solve_collision_objects();
 
 private:
+	glm::vec3 world_to_local_point(const glm::vec3& world_point) const;
+	glm::vec3 local_to_world_point(const glm::vec3& local_point) const;
+
 	Cloth& cloth_;
 	std::vector<DistanceConstraint> distance_constraints_;
 	std::vector<BendingConstraint> bending_constraints_;
@@ -98,5 +108,7 @@ private:
 	glm::vec3 external_acceleration_ = glm::vec3(0.0f);
 	float damping_ = 0.99f;
 	int constraint_iterations_ = 20;
+	bool collision_enabled_ = true;
+	float collision_margin_ = 0.01f;
 	std::uint64_t cached_topology_revision_ = 0;
 };

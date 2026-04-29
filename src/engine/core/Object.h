@@ -30,10 +30,13 @@ public:
 	void destroy() override;
 
 	void collect_render_data(RenderScene& scene) const;
+	virtual int update_order() const { return 0; }
 	virtual bool on_click(const ClickInputEvent& event);
 	virtual void on_hover_enter(const PointerPosition& position);
 	virtual void on_hover_leave(const PointerPosition& position);
 	virtual bool hit_test(const glm::vec3& ray_origin, const glm::vec3& ray_direction, float& hit_distance) const;
+	void request_destroy();
+	bool destroy_requested() const { return destroy_requested_; }
 
 	Transform& transform() { return transform_; }
 	const Transform& transform() const { return transform_; }
@@ -93,4 +96,5 @@ private:
 	bool awakened_ = false;
 	bool started_ = false;
 	bool destroyed_ = false;
+	bool destroy_requested_ = false;
 };

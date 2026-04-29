@@ -23,6 +23,8 @@ set(ENGINE_SOURCES
     src/engine/components/InputComponent.h
     src/engine/components/InputComponent.cpp
     src/engine/components/RenderComponent.h
+    src/engine/components/StaticMeshRenderComponent.h
+    src/engine/components/StaticMeshRenderComponent.cpp
     src/engine/components/SimulationComponent.h
     src/engine/core/Component.h
     src/engine/core/Object.h
@@ -38,8 +40,13 @@ set(ENGINE_SOURCES
     src/engine/render/RenderSystem.cpp
     src/engine/objects/CameraObject.h
     src/engine/objects/CameraObject.cpp
+    src/engine/objects/CollisionObject.h
     src/engine/objects/DirectionalLightObject.h
     src/engine/objects/DirectionalLightObject.cpp
+    src/engine/objects/PlaneObject.h
+    src/engine/objects/PlaneObject.cpp
+    src/engine/objects/SphereObject.h
+    src/engine/objects/SphereObject.cpp
 )
 
 set(CLOTH_SOURCES

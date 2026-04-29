@@ -1,6 +1,7 @@
 #include "engine/core/Object.h"
 
 #include "engine/components/RenderComponent.h"
+#include "engine/core/World.h"
 
 void Object::add_component(std::unique_ptr<Component> component)
 {
@@ -94,6 +95,7 @@ void Object::destroy()
 
 	destroyed_ = true;
 	awakened_ = false;
+	destroy_requested_ = false;
 }
 
 void Object::collect_render_data(RenderScene& scene) const
@@ -129,4 +131,15 @@ bool Object::hit_test(const glm::vec3& ray_origin, const glm::vec3& ray_directio
 	static_cast<void>(ray_direction);
 	static_cast<void>(hit_distance);
 	return false;
+}
+
+void Object::request_destroy()
+{
+	if (destroy_requested_ || !world_)
+	{
+		return;
+	}
+
+	destroy_requested_ = true;
+	world_->request_destroy_object(this);
 }

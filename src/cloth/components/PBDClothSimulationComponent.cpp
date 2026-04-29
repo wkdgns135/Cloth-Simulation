@@ -1,5 +1,7 @@
 #include "cloth/components/PBDClothSimulationComponent.h"
 
+#include <algorithm>
+
 #include "cloth/core/Cloth.h"
 #include "cloth/core/Particle.h"
 
@@ -19,13 +21,19 @@ void PBDClothSimulationComponent::update_simulation(float delta_time)
 	integrate(delta_time);
 
 	const int iterations = constraint_iterations();
+	const int solver_passes = std::max(1, iterations);
 	const float stretch_stiffness = per_iteration_stiffness(stretch_stiffness_);
 	const float bend_stiffness = per_iteration_stiffness(bend_stiffness_);
 
-	for (int i = 0; i < iterations; ++i)
+	for (int i = 0; i < solver_passes; ++i)
 	{
-		solve_distance_constraints(stretch_stiffness);
-		solve_bending_constraints(bend_stiffness);
+		if (i < iterations)
+		{
+			solve_distance_constraints(stretch_stiffness);
+			solve_bending_constraints(bend_stiffness);
+		}
+
+		solve_collision_objects();
 	}
 }
 

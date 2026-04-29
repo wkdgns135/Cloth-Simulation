@@ -1,5 +1,7 @@
 #include "cloth/components/XPBDClothSimulationComponent.h"
 
+#include <algorithm>
+
 #include "cloth/core/Cloth.h"
 #include "cloth/core/Particle.h"
 
@@ -30,10 +32,16 @@ void XPBDClothSimulationComponent::update_simulation(float delta_time)
 	reset_constraint_lambdas();
 
 	const int iterations = constraint_iterations();
-	for (int i = 0; i < iterations; ++i)
+	const int solver_passes = std::max(1, iterations);
+	for (int i = 0; i < solver_passes; ++i)
 	{
-		solve_distance_constraints(delta_time);
-		solve_bending_constraints(delta_time);
+		if (i < iterations)
+		{
+			solve_distance_constraints(delta_time);
+			solve_bending_constraints(delta_time);
+		}
+
+		solve_collision_objects();
 	}
 }
 

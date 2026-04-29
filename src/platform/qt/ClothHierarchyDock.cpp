@@ -92,11 +92,17 @@ void ClothHierarchyDock::build_ui()
 	create_buttons_layout->addWidget(add_mesh_button);
 	create_layout->addRow(create_buttons_layout);
 
+	QPushButton* spawn_sphere_button = new QPushButton("Spawn Sphere", create_group);
+	create_layout->addRow(spawn_sphere_button);
+
 	connect(add_grid_button, &QPushButton::clicked, this, [this]() {
 		create_grid_cloth();
 	});
 	connect(add_mesh_button, &QPushButton::clicked, this, [this]() {
 		create_mesh_cloth();
+	});
+	connect(spawn_sphere_button, &QPushButton::clicked, this, [this]() {
+		spawn_sphere();
 	});
 
 	layout->addWidget(create_group);
@@ -165,4 +171,9 @@ void ClothHierarchyDock::create_mesh_cloth()
 	}
 
 	controller_.create_mesh_cloth(file_path.toStdString(), combo_box_solver_kind(new_solver_combo_));
+}
+
+void ClothHierarchyDock::spawn_sphere()
+{
+	controller_.spawn_sphere_from_view();
 }
