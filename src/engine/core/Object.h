@@ -9,8 +9,6 @@
 
 #include <glm/glm.hpp>
 
-#include "engine/lifecycle/Lifecycle.h"
-
 using ObjectId = std::uint64_t;
 constexpr ObjectId kInvalidObjectId = 0;
 
@@ -34,15 +32,21 @@ struct PropertyDesc
 	bool editable = true;
 };
 
-class Object : public Lifecycle
+class Object
 {
 public:
 	Object();
 	explicit Object(std::string display_name);
-	~Object() override = default;
+	virtual ~Object() = default;
 
 	Object(const Object&) = delete;
 	Object& operator=(const Object&) = delete;
+
+	virtual void awake() {}
+	virtual void start() {}
+	virtual void update(float delta_time) { static_cast<void>(delta_time); }
+	virtual void stop() {}
+	virtual void destroy() {}
 
 	ObjectId id() const { return id_; }
 	const std::string& display_name() const { return display_name_; }

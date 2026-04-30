@@ -35,7 +35,6 @@ set(ENGINE_SOURCES
     src/engine/core/Transform.h
     src/engine/core/World.h
     src/engine/core/World.cpp
-    src/engine/lifecycle/Lifecycle.h
     src/engine/render/Renderer.h
     src/engine/render/Renderer.cpp
     src/engine/render/RenderScene.h
