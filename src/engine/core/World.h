@@ -1,21 +1,20 @@
 #pragma once
 
 #include <array>
-#include <memory>
 #include <type_traits>
 #include <utility>
 #include <vector>
 
 #include "engine/components/InputComponent.h"
-#include "engine/lifecycle/Lifecycle.h"
-#include "engine/core/Object.h"
+#include "engine/core/IndexedStore.h"
+#include "engine/core/WorldObject.h"
 #include "engine/render/RenderScene.h"
 
 class CameraObject;
 class DirectionalLightObject;
 class InputComponent;
 
-class World : public Lifecycle
+class World : public Object
 {
 public:
 	World();
@@ -33,13 +32,13 @@ public:
 	template <typename T, typename... Args>
 	T& create_object(Args&&... args)
 	{
-		static_assert(std::is_base_of_v<Object, T>);
+		static_assert(std::is_base_of_v<WorldObject, T>);
 
 		auto object = std::make_unique<T>(std::forward<Args>(args)...);
 		object->set_world(this);
 		T& result = *object;
 
-		objects_.push_back(std::move(object));
+		world_objects_.insert(std::move(object));
 
 		if (awakened_)
 		{
@@ -56,12 +55,12 @@ public:
 	template <typename T>
 	std::vector<T*> get_objects()
 	{
-		static_assert(std::is_base_of_v<Object, T>);
+		static_assert(std::is_base_of_v<WorldObject, T>);
 
 		std::vector<T*> result;
-		result.reserve(objects_.size());
+		result.reserve(world_objects_.size());
 
-		for (const std::unique_ptr<Object>& object : objects_)
+		for (const std::unique_ptr<WorldObject>& object : world_objects_.ordered())
 		{
 			if (T* typed_object = dynamic_cast<T*>(object.get()))
 			{
@@ -75,12 +74,12 @@ public:
 	template <typename T>
 	std::vector<const T*> get_objects() const
 	{
-		static_assert(std::is_base_of_v<Object, T>);
+		static_assert(std::is_base_of_v<WorldObject, T>);
 
 		std::vector<const T*> result;
-		result.reserve(objects_.size());
+		result.reserve(world_objects_.size());
 
-		for (const std::unique_ptr<Object>& object : objects_)
+		for (const std::unique_ptr<WorldObject>& object : world_objects_.ordered())
 		{
 			if (const T* typed_object = dynamic_cast<const T*>(object.get()))
 			{
@@ -91,6 +90,20 @@ public:
 		return result;
 	}
 
+	template <typename T = WorldObject>
+	T* find_object(ObjectId object_id)
+	{
+		static_assert(std::is_base_of_v<WorldObject, T>);
+		return dynamic_cast<T*>(world_objects_.find(object_id));
+	}
+
+	template <typename T = WorldObject>
+	const T* find_object(ObjectId object_id) const
+	{
+		static_assert(std::is_base_of_v<WorldObject, T>);
+		return dynamic_cast<const T*>(world_objects_.find(object_id));
+	}
+
 	bool on_key_pressed(const KeyInputEvent& event);
 	bool on_key_released(const KeyInputEvent& event);
 	bool on_pointer_pressed(const PointerInputEvent& event);
@@ -99,7 +112,7 @@ public:
 	bool on_click(const ClickInputEvent& event);
 	bool on_wheel_scrolled(const WheelInputEvent& event);
 	void set_viewport_size(int width, int height);
-	void request_destroy_object(Object* object);
+	void request_destroy_object(WorldObject* object);
 
 	RenderScene build_render_scene() const;
 
@@ -111,14 +124,14 @@ protected:
 	virtual bool native_on_pointer_moved(const PointerInputEvent& event);
 	virtual bool native_on_click(const ClickInputEvent& event);
 	virtual bool native_on_wheel_scrolled(const WheelInputEvent& event);
-	bool destroy_object(Object* object);
+	bool destroy_object(WorldObject* object);
 
-	std::vector<std::unique_ptr<Object>> objects_;
+	IndexedStore<WorldObject> world_objects_;
 	bool awakened_ = false;
 	bool started_ = false;
 	bool destroyed_ = false;
-	CameraObject* const main_camera_object_;
-	DirectionalLightObject* const main_directional_light_object_;
+	CameraObject* main_camera_object_ = nullptr;
+	DirectionalLightObject* main_directional_light_object_ = nullptr;
 
 private:
 	template <typename Handler>
@@ -141,11 +154,11 @@ private:
 	void unsubscribe_pointer_released(PointerButton button, InputSubscriptionHandle handle);
 	void unsubscribe_pointer_moved(InputSubscriptionHandle handle);
 	void unsubscribe_wheel_scrolled(InputSubscriptionHandle handle);
-	Object* pick_object(const PointerPosition& position) const;
+	WorldObject* pick_object(const PointerPosition& position) const;
 	void update_hovered_object(const PointerPosition& position);
-	bool destroy_object_immediate(Object* object);
+	bool destroy_object_immediate(WorldObject* object);
 	void flush_destroy_requests();
-	bool is_destroy_queued(const Object* object) const;
+	bool is_destroy_queued(const WorldObject* object) const;
 
 	std::array<std::vector<InputListenerEntry<InputComponent::KeyHandler>>, kInputKeyCount> key_pressed_listeners_;
 	std::array<std::vector<InputListenerEntry<InputComponent::KeyHandler>>, kInputKeyCount> key_released_listeners_;
@@ -154,11 +167,11 @@ private:
 	std::vector<InputListenerEntry<InputComponent::PointerHandler>> pointer_moved_listeners_;
 	std::vector<InputListenerEntry<InputComponent::WheelHandler>> wheel_scrolled_listeners_;
 	std::uint64_t next_input_subscription_id_ = 1;
-	Object* hovered_object_ = nullptr;
+	WorldObject* hovered_object_ = nullptr;
 	int viewport_width_ = 1;
 	int viewport_height_ = 1;
 	bool updating_ = false;
-	std::vector<Object*> pending_destroy_objects_;
+	std::vector<WorldObject*> pending_destroy_objects_;
 
 	friend class InputComponent;
 };

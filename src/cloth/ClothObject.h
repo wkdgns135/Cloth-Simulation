@@ -7,11 +7,11 @@
 
 #include "cloth/core/Cloth.h"
 #include "cloth/core/Particle.h"
-#include "engine/core/Object.h"
+#include "engine/core/WorldObject.h"
 
 class ClothSimulationComponentBase;
 
-using ClothId = std::uint64_t;
+using ClothId = ObjectId;
 
 enum class ClothSourceKind
 {
@@ -25,14 +25,13 @@ enum class ClothSolverKind
 	XPBD,
 };
 
-class ClothObject final : public Object
+class ClothObject final : public WorldObject
 {
 public:
-	ClothObject(ClothId cloth_id, std::string display_name, int width, int height, float spacing);
-	ClothObject(ClothId cloth_id, std::string display_name, const std::filesystem::path& mesh_path);
+	ClothObject(std::string display_name, int width, int height, float spacing);
+	ClothObject(std::string display_name, const std::filesystem::path& mesh_path);
 
-	ClothId cloth_id() const { return cloth_id_; }
-	const std::string& display_name() const { return display_name_; }
+	ClothId cloth_id() const { return id(); }
 	const std::string& source_label() const { return source_label_; }
 	ClothSourceKind source_kind() const { return source_kind_; }
 	bool anchors_enabled() const { return anchors_enabled_; }
@@ -54,8 +53,6 @@ private:
 	void cache_initial_state();
 	void refresh_initial_state_if_needed();
 
-	ClothId cloth_id_ = 0;
-	std::string display_name_;
 	std::string source_label_;
 	ClothSourceKind source_kind_ = ClothSourceKind::Grid;
 	Cloth cloth_;

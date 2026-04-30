@@ -84,9 +84,10 @@ glm::vec3 project_point_from_clip_space(const glm::mat4& inverse_view_projection
 }
 
 World::World()
-	: main_camera_object_(&create_object<CameraObject>())
-	, main_directional_light_object_(&create_object<DirectionalLightObject>())
 {
+	main_camera_object_ = &create_object<CameraObject>();
+	main_directional_light_object_ = &create_object<DirectionalLightObject>();
+
 	main_camera_object_->transform().position = glm::vec3(0.0f, 0.0f, 2.0f);
 	main_camera_object_->transform().look_at(glm::vec3(0.0f));
 
@@ -103,7 +104,7 @@ void World::awake()
 	awakened_ = true;
 	destroyed_ = false;
 
-	for (const std::unique_ptr<Object>& object : objects_)
+	for (const std::unique_ptr<WorldObject>& object : world_objects_.ordered())
 	{
 		object->awake();
 	}
@@ -119,7 +120,7 @@ void World::start()
 	awake();
 	started_ = true;
 
-	for (const std::unique_ptr<Object>& object : objects_)
+	for (const std::unique_ptr<WorldObject>& object : world_objects_.ordered())
 	{
 		object->start();
 	}
@@ -129,17 +130,17 @@ void World::update(float delta_time)
 {
 	updating_ = true;
 
-	std::vector<Object*> update_objects;
-	update_objects.reserve(objects_.size());
+	std::vector<WorldObject*> update_objects;
+	update_objects.reserve(world_objects_.size());
 
-	for (const std::unique_ptr<Object>& object : objects_)
+	for (const std::unique_ptr<WorldObject>& object : world_objects_.ordered())
 	{
 		if (!object)
 		{
 			continue;
 		}
 
-		Object* raw_object = object.get();
+		WorldObject* raw_object = object.get();
 		if (is_destroy_queued(raw_object) || raw_object->destroy_requested())
 		{
 			continue;
@@ -148,11 +149,11 @@ void World::update(float delta_time)
 		update_objects.push_back(raw_object);
 	}
 
-	std::stable_sort(update_objects.begin(), update_objects.end(), [](const Object* lhs, const Object* rhs) {
+	std::stable_sort(update_objects.begin(), update_objects.end(), [](const WorldObject* lhs, const WorldObject* rhs) {
 		return lhs->update_order() < rhs->update_order();
 	});
 
-	for (Object* object : update_objects)
+	for (WorldObject* object : update_objects)
 	{
 		if (is_destroy_queued(object) || object->destroy_requested())
 		{
@@ -175,7 +176,7 @@ void World::stop()
 
 	started_ = false;
 
-	for (const std::unique_ptr<Object>& object : objects_)
+	for (const std::unique_ptr<WorldObject>& object : world_objects_.ordered())
 	{
 		object->stop();
 	}
@@ -190,7 +191,7 @@ void World::destroy()
 
 	stop();
 
-	for (const std::unique_ptr<Object>& object : objects_)
+	for (const std::unique_ptr<WorldObject>& object : world_objects_.ordered())
 	{
 		object->destroy();
 	}
@@ -287,7 +288,7 @@ bool World::on_click(const ClickInputEvent& event)
 {
 	bool handled = native_on_click(event);
 
-	if (Object* clicked_object = pick_object(event.position))
+	if (WorldObject* clicked_object = pick_object(event.position))
 	{
 		handled = clicked_object->on_click(event) || handled;
 	}
@@ -326,7 +327,7 @@ RenderScene World::build_render_scene() const
 		scene.directional_light = main_directional_light_object_->build_light();
 	}
 
-	for (const std::unique_ptr<Object>& object : objects_)
+	for (const std::unique_ptr<WorldObject>& object : world_objects_.ordered())
 	{
 		object->collect_render_data(scene);
 	}
@@ -456,7 +457,7 @@ void World::unsubscribe_wheel_scrolled(InputSubscriptionHandle handle)
 	remove_input_listener(wheel_scrolled_listeners_, handle);
 }
 
-Object* World::pick_object(const PointerPosition& position) const
+WorldObject* World::pick_object(const PointerPosition& position) const
 {
 	if (!main_camera_object_)
 	{
@@ -486,10 +487,10 @@ Object* World::pick_object(const PointerPosition& position) const
 
 	const glm::vec3 normalized_ray_direction = glm::normalize(ray_direction);
 
-	Object* closest_object = nullptr;
+	WorldObject* closest_object = nullptr;
 	float closest_hit_distance = 0.0f;
 
-	for (const std::unique_ptr<Object>& object : objects_)
+	for (const std::unique_ptr<WorldObject>& object : world_objects_.ordered())
 	{
 		float hit_distance = 0.0f;
 		if (!object->hit_test(camera.position, normalized_ray_direction, hit_distance))
@@ -509,7 +510,7 @@ Object* World::pick_object(const PointerPosition& position) const
 
 void World::update_hovered_object(const PointerPosition& position)
 {
-	Object* next_hovered_object = pick_object(position);
+	WorldObject* next_hovered_object = pick_object(position);
 	if (next_hovered_object == hovered_object_)
 	{
 		return;
@@ -570,7 +571,7 @@ bool World::native_on_wheel_scrolled(const WheelInputEvent& event)
 	return false;
 }
 
-bool World::destroy_object(Object* object)
+bool World::destroy_object(WorldObject* object)
 {
 	if (!object)
 	{
@@ -586,7 +587,7 @@ bool World::destroy_object(Object* object)
 	return destroy_object_immediate(object);
 }
 
-void World::request_destroy_object(Object* object)
+void World::request_destroy_object(WorldObject* object)
 {
 	if (!object)
 	{
@@ -601,17 +602,15 @@ void World::request_destroy_object(Object* object)
 	pending_destroy_objects_.push_back(object);
 }
 
-bool World::destroy_object_immediate(Object* object)
+bool World::destroy_object_immediate(WorldObject* object)
 {
 	if (!object)
 	{
 		return false;
 	}
 
-	const auto it = std::find_if(objects_.begin(), objects_.end(), [&](const std::unique_ptr<Object>& candidate) {
-		return candidate.get() == object;
-	});
-	if (it == objects_.end())
+	WorldObject* existing_object = world_objects_.find(object->id());
+	if (!existing_object)
 	{
 		return false;
 	}
@@ -621,9 +620,8 @@ bool World::destroy_object_immediate(Object* object)
 		hovered_object_ = nullptr;
 	}
 
-	(*it)->destroy();
-	objects_.erase(it);
-	return true;
+	existing_object->destroy();
+	return world_objects_.erase(existing_object);
 }
 
 void World::flush_destroy_requests()
@@ -633,16 +631,16 @@ void World::flush_destroy_requests()
 		return;
 	}
 
-	std::vector<Object*> destroy_queue;
+	std::vector<WorldObject*> destroy_queue;
 	destroy_queue.swap(pending_destroy_objects_);
 
-	for (Object* object : destroy_queue)
+	for (WorldObject* object : destroy_queue)
 	{
 		destroy_object_immediate(object);
 	}
 }
 
-bool World::is_destroy_queued(const Object* object) const
+bool World::is_destroy_queued(const WorldObject* object) const
 {
 	return std::find(pending_destroy_objects_.begin(), pending_destroy_objects_.end(), object) != pending_destroy_objects_.end();
 }

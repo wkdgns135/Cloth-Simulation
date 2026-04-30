@@ -34,7 +34,6 @@ public:
 	ClothId selected_cloth_id() const { return selected_cloth_id_; }
 
 private:
-	ClothId allocate_cloth_id();
 	ClothObject* find_cloth(ClothId cloth_id);
 	const ClothObject* find_cloth(ClothId cloth_id) const;
 	int cloth_count() const;
@@ -42,7 +41,6 @@ private:
 	void attach_solver(ClothObject& cloth_object, ClothSolverKind solver_kind);
 	void notify_changed() const;
 
-	ClothId next_cloth_id_ = 1;
 	ClothId selected_cloth_id_ = 0;
 	ChangeCallback change_callback_;
 };

@@ -1,145 +1,43 @@
 #include "engine/core/Object.h"
 
-#include "engine/components/RenderComponent.h"
-#include "engine/core/World.h"
+#include <atomic>
+#include <utility>
 
-void Object::add_component(std::unique_ptr<Component> component)
+namespace
 {
-	if (!component)
-	{
-		return;
-	}
-
-	component->set_owner(this);
-	Component& result = *component;
-	components_.push_back(std::move(component));
-
-	if (awakened_)
-	{
-		result.awake();
-	}
-	if (started_)
-	{
-		result.start();
-	}
+std::atomic<ObjectId> g_next_object_id{ 1 };
 }
 
-void Object::awake()
+Object::Object()
+	: id_(g_next_object_id.fetch_add(1, std::memory_order_relaxed))
 {
-	if (awakened_)
-	{
-		return;
-	}
-
-	awakened_ = true;
-	destroyed_ = false;
-
-	for (const std::unique_ptr<Component>& component : components_)
-	{
-		component->awake();
-	}
 }
 
-void Object::start()
+Object::Object(std::string display_name)
+	: Object()
 {
-	if (started_)
-	{
-		return;
-	}
-
-	awake();
-	started_ = true;
-
-	for (const std::unique_ptr<Component>& component : components_)
-	{
-		component->start();
-	}
+	display_name_ = std::move(display_name);
 }
 
-void Object::update(float delta_time)
+void Object::set_display_name(std::string display_name)
 {
-	for (const std::unique_ptr<Component>& component : components_)
-	{
-		component->update(delta_time);
-	}
+	display_name_ = std::move(display_name);
 }
 
-void Object::stop()
+std::vector<PropertyDesc> Object::property_descriptors() const
 {
-	if (!started_)
-	{
-		return;
-	}
-
-	started_ = false;
-
-	for (const std::unique_ptr<Component>& component : components_)
-	{
-		component->stop();
-	}
+	return {};
 }
 
-void Object::destroy()
+std::optional<PropertyValue> Object::get_property(std::string_view property_id) const
 {
-	if (destroyed_)
-	{
-		return;
-	}
-
-	stop();
-
-	for (const std::unique_ptr<Component>& component : components_)
-	{
-		component->destroy();
-	}
-
-	destroyed_ = true;
-	awakened_ = false;
-	destroy_requested_ = false;
+	static_cast<void>(property_id);
+	return std::nullopt;
 }
 
-void Object::collect_render_data(RenderScene& scene) const
+bool Object::set_property(std::string_view property_id, const PropertyValue& value)
 {
-	for (const std::unique_ptr<Component>& component : components_)
-	{
-		if (const RenderComponent* render_component = dynamic_cast<const RenderComponent*>(component.get()))
-		{
-			render_component->collect_render_data(scene);
-		}
-	}
-}
-
-bool Object::on_click(const ClickInputEvent& event)
-{
-	static_cast<void>(event);
+	static_cast<void>(property_id);
+	static_cast<void>(value);
 	return false;
-}
-
-void Object::on_hover_enter(const PointerPosition& position)
-{
-	static_cast<void>(position);
-}
-
-void Object::on_hover_leave(const PointerPosition& position)
-{
-	static_cast<void>(position);
-}
-
-bool Object::hit_test(const glm::vec3& ray_origin, const glm::vec3& ray_direction, float& hit_distance) const
-{
-	static_cast<void>(ray_origin);
-	static_cast<void>(ray_direction);
-	static_cast<void>(hit_distance);
-	return false;
-}
-
-void Object::request_destroy()
-{
-	if (destroy_requested_ || !world_)
-	{
-		return;
-	}
-
-	destroy_requested_ = true;
-	world_->request_destroy_object(this);
 }

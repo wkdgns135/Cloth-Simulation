@@ -82,7 +82,7 @@ void SphereObject::configure_projectile(const glm::vec3& velocity, float max_tra
 
 void SphereObject::update(float delta_time)
 {
-	Object::update(delta_time);
+	WorldObject::update(delta_time);
 
 	if (delta_time <= 0.0f || destroy_requested())
 	{

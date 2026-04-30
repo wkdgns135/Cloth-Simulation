@@ -1,9 +1,9 @@
 #pragma once
 
-#include "engine/core/Object.h"
+#include "engine/core/WorldObject.h"
 #include "engine/render/RenderScene.h"
 
-class CameraObject : public Object
+class CameraObject : public WorldObject
 {
 public:
 	float fov_y_degrees = 45.0f;

@@ -5,6 +5,7 @@
 #include <cstddef>
 #include <sstream>
 #include <vector>
+#include <cfloat>
 
 #include <glm/ext/scalar_relational.hpp>
 
@@ -43,7 +44,7 @@ void pin_highest_particles(Cloth& cloth)
 		return;
 	}
 
-	float max_height = 0.0f;
+	float max_height = -FLT_MAX;
 	for (const Particle& particle : particles)
 	{
 		max_height = std::max(max_height, particle.position.y);
@@ -102,9 +103,8 @@ bool intersect_triangle(
 }
 }
 
-ClothObject::ClothObject(ClothId cloth_id, std::string display_name, int width, int height, float spacing)
-	: cloth_id_(cloth_id)
-	, display_name_(std::move(display_name))
+ClothObject::ClothObject(std::string display_name, int width, int height, float spacing)
+	: WorldObject(std::move(display_name))
 	, source_label_(make_grid_source_label(width, height, spacing))
 	, source_kind_(ClothSourceKind::Grid)
 	, cloth_(width, height, spacing)
@@ -115,9 +115,8 @@ ClothObject::ClothObject(ClothId cloth_id, std::string display_name, int width, 
 	add_component<ClothInteractionComponent>(*this);
 }
 
-ClothObject::ClothObject(ClothId cloth_id, std::string display_name, const std::filesystem::path& mesh_path)
-	: cloth_id_(cloth_id)
-	, display_name_(std::move(display_name))
+ClothObject::ClothObject(std::string display_name, const std::filesystem::path& mesh_path)
+	: WorldObject(std::move(display_name))
 	, source_label_(mesh_path.filename().string())
 	, source_kind_(ClothSourceKind::Mesh)
 	, cloth_(io::load_cloth(mesh_path))
@@ -130,7 +129,7 @@ ClothObject::ClothObject(ClothId cloth_id, std::string display_name, const std::
 
 ClothSolverKind ClothObject::solver_kind() const
 {
-	if (!get_components<XPBDClothSimulationComponent>().empty())
+	if (find_component<XPBDClothSimulationComponent>())
 	{
 		return ClothSolverKind::XPBD;
 	}
@@ -140,14 +139,12 @@ ClothSolverKind ClothObject::solver_kind() const
 
 ClothSimulationComponentBase* ClothObject::simulation_component()
 {
-	const std::vector<ClothSimulationComponentBase*> components = get_components<ClothSimulationComponentBase>();
-	return components.empty() ? nullptr : components.front();
+	return find_component<ClothSimulationComponentBase>();
 }
 
 const ClothSimulationComponentBase* ClothObject::simulation_component() const
 {
-	const std::vector<const ClothSimulationComponentBase*> components = get_components<ClothSimulationComponentBase>();
-	return components.empty() ? nullptr : components.front();
+	return find_component<ClothSimulationComponentBase>();
 }
 
 void ClothObject::reset_to_initial_state()
@@ -231,7 +228,7 @@ bool ClothObject::on_click(const ClickInputEvent& event)
 
 	if (ClothWorld* cloth_world = dynamic_cast<ClothWorld*>(world()))
 	{
-		cloth_world->select_cloth(cloth_id_);
+		cloth_world->select_cloth(id());
 		return true;
 	}
 

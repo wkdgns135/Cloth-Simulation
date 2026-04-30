@@ -2,9 +2,9 @@
 
 #include <glm/glm.hpp>
 
-#include "engine/core/Object.h"
+#include "engine/core/WorldObject.h"
 
-class CollisionObject : public Object
+class CollisionObject : public WorldObject
 {
 public:
 	~CollisionObject() override = default;

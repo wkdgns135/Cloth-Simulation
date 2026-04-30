@@ -235,7 +235,7 @@ void ClothEditorController::request_snapshot()
 		{
 			const Cloth& cloth = cloth_object->cloth();
 			ClothViewState cloth_view;
-			cloth_view.id = cloth_object->cloth_id();
+			cloth_view.id = cloth_object->id();
 			cloth_view.name = QString::fromStdString(cloth_object->display_name());
 			cloth_view.source_label = QString::fromStdString(cloth_object->source_label());
 			cloth_view.source_kind_label = source_display_name(cloth_object->source_kind());

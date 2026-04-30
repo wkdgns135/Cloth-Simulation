@@ -1,6 +1,6 @@
 #include "engine/components/InputComponent.h"
 
-#include "engine/core/Object.h"
+#include "engine/core/WorldObject.h"
 #include "engine/core/World.h"
 
 void InputComponent::awake()
@@ -10,7 +10,7 @@ void InputComponent::awake()
 		return;
 	}
 
-	Object* object_owner = owner();
+	WorldObject* object_owner = owner();
 	if (!object_owner || !object_owner->world())
 	{
 		return;
@@ -82,7 +82,7 @@ void InputComponent::destroy()
 		return;
 	}
 
-	Object* object_owner = owner();
+	WorldObject* object_owner = owner();
 	if (object_owner && object_owner->world())
 	{
 		World& world = *object_owner->world();
@@ -136,7 +136,7 @@ void InputComponent::bind_key_pressed(InputKey key, KeyHandler handler)
 
 	key_pressed_bindings_.push_back(KeyBinding{ key, std::move(handler) });
 
-	Object* object_owner = owner();
+	WorldObject* object_owner = owner();
 	if (registered_with_world_ && object_owner && object_owner->world())
 	{
 		const InputSubscriptionHandle handle
@@ -157,7 +157,7 @@ void InputComponent::bind_key_released(InputKey key, KeyHandler handler)
 
 	key_released_bindings_.push_back(KeyBinding{ key, std::move(handler) });
 
-	Object* object_owner = owner();
+	WorldObject* object_owner = owner();
 	if (registered_with_world_ && object_owner && object_owner->world())
 	{
 		const InputSubscriptionHandle handle
@@ -178,7 +178,7 @@ void InputComponent::bind_pointer_pressed(PointerButton button, PointerHandler h
 
 	pointer_pressed_bindings_.push_back(PointerBinding{ button, std::move(handler) });
 
-	Object* object_owner = owner();
+	WorldObject* object_owner = owner();
 	if (registered_with_world_ && object_owner && object_owner->world())
 	{
 		const InputSubscriptionHandle handle
@@ -199,7 +199,7 @@ void InputComponent::bind_pointer_released(PointerButton button, PointerHandler 
 
 	pointer_released_bindings_.push_back(PointerBinding{ button, std::move(handler) });
 
-	Object* object_owner = owner();
+	WorldObject* object_owner = owner();
 	if (registered_with_world_ && object_owner && object_owner->world())
 	{
 		const InputSubscriptionHandle handle
@@ -220,7 +220,7 @@ void InputComponent::bind_pointer_moved(PointerHandler handler)
 
 	pointer_moved_handlers_.push_back(std::move(handler));
 
-	Object* object_owner = owner();
+	WorldObject* object_owner = owner();
 	if (registered_with_world_ && object_owner && object_owner->world())
 	{
 		const InputSubscriptionHandle handle
@@ -241,7 +241,7 @@ void InputComponent::bind_wheel_scrolled(WheelHandler handler)
 
 	wheel_scrolled_handlers_.push_back(std::move(handler));
 
-	Object* object_owner = owner();
+	WorldObject* object_owner = owner();
 	if (registered_with_world_ && object_owner && object_owner->world())
 	{
 		const InputSubscriptionHandle handle

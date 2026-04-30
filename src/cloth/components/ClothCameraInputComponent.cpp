@@ -5,7 +5,7 @@
 
 #include <glm/geometric.hpp>
 
-#include "engine/core/Object.h"
+#include "engine/core/WorldObject.h"
 #include "engine/core/Transform.h"
 
 namespace
@@ -206,7 +206,7 @@ void ClothCameraInputComponent::initialize_focus_target()
 		return;
 	}
 
-	Object* object_owner = owner();
+	WorldObject* object_owner = owner();
 	if (!object_owner)
 	{
 		return;
@@ -221,7 +221,7 @@ void ClothCameraInputComponent::initialize_focus_target()
 
 void ClothCameraInputComponent::move_camera(float delta_time)
 {
-	Object* object_owner = owner();
+	WorldObject* object_owner = owner();
 	if (!object_owner)
 	{
 		return;
@@ -272,7 +272,7 @@ void ClothCameraInputComponent::move_camera(float delta_time)
 
 void ClothCameraInputComponent::orbit_camera(const PointerPosition& delta)
 {
-	Object* object_owner = owner();
+	WorldObject* object_owner = owner();
 	if (!object_owner)
 	{
 		return;
@@ -305,7 +305,7 @@ void ClothCameraInputComponent::orbit_camera(const PointerPosition& delta)
 
 void ClothCameraInputComponent::zoom_camera(float wheel_steps)
 {
-	Object* object_owner = owner();
+	WorldObject* object_owner = owner();
 	if (!object_owner)
 	{
 		return;

@@ -2,10 +2,10 @@
 
 #include <glm/glm.hpp>
 
-#include "engine/core/Object.h"
+#include "engine/core/WorldObject.h"
 #include "engine/render/RenderScene.h"
 
-class DirectionalLightObject : public Object
+class DirectionalLightObject : public WorldObject
 {
 public:
 	glm::vec3 color = glm::vec3(1.0f);

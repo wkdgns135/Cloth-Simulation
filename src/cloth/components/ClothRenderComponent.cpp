@@ -7,7 +7,7 @@
 
 #include "cloth/core/Cloth.h"
 #include "cloth/core/Particle.h"
-#include "engine/core/Object.h"
+#include "engine/core/WorldObject.h"
 #include "engine/render/RenderScene.h"
 
 namespace
@@ -83,7 +83,7 @@ void ClothRenderComponent::collect_render_data(RenderScene& scene) const
 	object.mesh.indices = indices;
 	object.material.base_color = glm::vec4(1.0f);
 
-	if (const Object* object_owner = owner())
+	if (const WorldObject* object_owner = owner())
 	{
 		object.transform = object_owner->transform().matrix();
 	}

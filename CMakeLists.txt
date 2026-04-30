@@ -26,7 +26,10 @@ set(ENGINE_SOURCES
     src/engine/components/StaticMeshRenderComponent.h
     src/engine/components/StaticMeshRenderComponent.cpp
     src/engine/components/SimulationComponent.h
+    src/engine/core/WorldObject.h
+    src/engine/core/WorldObject.cpp
     src/engine/core/Component.h
+    src/engine/core/IndexedStore.h
     src/engine/core/Object.h
     src/engine/core/Object.cpp
     src/engine/core/Transform.h

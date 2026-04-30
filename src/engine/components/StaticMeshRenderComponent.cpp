@@ -2,7 +2,7 @@
 
 #include <utility>
 
-#include "engine/core/Object.h"
+#include "engine/core/WorldObject.h"
 
 StaticMeshRenderComponent::StaticMeshRenderComponent(MeshData mesh, const glm::vec4& base_color)
 	: mesh_(std::move(mesh))
@@ -21,7 +21,7 @@ void StaticMeshRenderComponent::collect_render_data(RenderScene& scene) const
 	object.mesh = mesh_;
 	object.material.base_color = base_color_;
 
-	if (const Object* object_owner = owner())
+	if (const WorldObject* object_owner = owner())
 	{
 		object.transform = object_owner->transform().matrix();
 	}

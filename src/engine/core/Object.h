@@ -1,100 +1,58 @@
 #pragma once
 
-#include <memory>
-#include <type_traits>
-#include <utility>
+#include <cstdint>
+#include <optional>
+#include <string>
+#include <string_view>
+#include <variant>
 #include <vector>
 
-#include "engine/core/Component.h"
-#include "engine/core/Transform.h"
+#include <glm/glm.hpp>
+
 #include "engine/lifecycle/Lifecycle.h"
 
-struct RenderScene;
-struct ClickInputEvent;
-struct PointerPosition;
-class World;
+using ObjectId = std::uint64_t;
+constexpr ObjectId kInvalidObjectId = 0;
+
+enum class PropertyType
+{
+	Bool,
+	Int,
+	Float,
+	Vec3,
+	String,
+};
+
+using PropertyValue = std::variant<bool, int, float, glm::vec3, std::string>;
+
+struct PropertyDesc
+{
+	std::string id;
+	std::string label;
+	std::string group;
+	PropertyType type = PropertyType::Float;
+	bool editable = true;
+};
 
 class Object : public Lifecycle
 {
 public:
-	Object() = default;
+	Object();
+	explicit Object(std::string display_name);
 	~Object() override = default;
 
 	Object(const Object&) = delete;
 	Object& operator=(const Object&) = delete;
 
-	void awake() override;
-	void start() override;
-	void update(float delta_time) override;
-	void stop() override;
-	void destroy() override;
+	ObjectId id() const { return id_; }
+	const std::string& display_name() const { return display_name_; }
+	void set_display_name(std::string display_name);
 
-	void collect_render_data(RenderScene& scene) const;
-	virtual int update_order() const { return 0; }
-	virtual bool on_click(const ClickInputEvent& event);
-	virtual void on_hover_enter(const PointerPosition& position);
-	virtual void on_hover_leave(const PointerPosition& position);
-	virtual bool hit_test(const glm::vec3& ray_origin, const glm::vec3& ray_direction, float& hit_distance) const;
-	void request_destroy();
-	bool destroy_requested() const { return destroy_requested_; }
-
-	Transform& transform() { return transform_; }
-	const Transform& transform() const { return transform_; }
-	void set_world(World* world) { world_ = world; }
-	World* world() { return world_; }
-	const World* world() const { return world_; }
-
-	void add_component(std::unique_ptr<Component> component);
-
-	template <typename T, typename... Args>
-	T& add_component(Args&&... args)
-	{
-		static_assert(std::is_base_of_v<Component, T>);
-
-		std::unique_ptr<Component> component = std::make_unique<T>(std::forward<Args>(args)...);
-		T& result = static_cast<T&>(*component);
-		add_component(std::move(component));
-		return result;
-	}
-
-	template <typename T>
-	std::vector<T*> get_components()
-	{
-		static_assert(std::is_base_of_v<Component, T>);
-
-		std::vector<T*> result;
-		for (const std::unique_ptr<Component>& component : components_)
-		{
-			if (T* typed_component = dynamic_cast<T*>(component.get()))
-			{
-				result.push_back(typed_component);
-			}
-		}
-		return result;
-	}
-
-	template <typename T>
-	std::vector<const T*> get_components() const
-	{
-		static_assert(std::is_base_of_v<Component, T>);
-
-		std::vector<const T*> result;
-		for (const std::unique_ptr<Component>& component : components_)
-		{
-			if (const T* typed_component = dynamic_cast<const T*>(component.get()))
-			{
-				result.push_back(typed_component);
-			}
-		}
-		return result;
-	}
+	virtual std::vector<PropertyDesc> property_descriptors() const;
+	virtual std::optional<PropertyValue> get_property(std::string_view property_id) const;
+	virtual bool set_property(std::string_view property_id, const PropertyValue& value);
 
 private:
-	Transform transform_;
-	World* world_ = nullptr;
-	std::vector<std::unique_ptr<Component>> components_;
-	bool awakened_ = false;
-	bool started_ = false;
-	bool destroyed_ = false;
-	bool destroy_requested_ = false;
+	ObjectId id_ = kInvalidObjectId;
+	std::string display_name_;
 };

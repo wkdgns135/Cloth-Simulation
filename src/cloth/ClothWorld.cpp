@@ -65,16 +65,15 @@ ClothWorld::ClothWorld()
 ClothObject& ClothWorld::create_grid_cloth(int width, int height, float spacing, ClothSolverKind solver_kind)
 {
 	const int existing_cloth_count = cloth_count();
-	const ClothId cloth_id = allocate_cloth_id();
 	ClothObject& cloth_object = create_object<ClothObject>(
-		cloth_id,
-		make_default_cloth_name(cloth_id, solver_kind),
+		std::string(),
 		width,
 		height,
 		spacing);
+	cloth_object.set_display_name(make_default_cloth_name(cloth_object.id(), solver_kind));
 	attach_solver(cloth_object, solver_kind);
 	cloth_object.transform().position = glm::vec3(0.35f * static_cast<float>(existing_cloth_count), 0.0f, 0.0f);
-	selected_cloth_id_ = cloth_id;
+	selected_cloth_id_ = cloth_object.id();
 	notify_changed();
 	return cloth_object;
 }
@@ -115,14 +114,13 @@ void ClothWorld::spawn_sphere_projectile()
 ClothObject& ClothWorld::create_mesh_cloth(const std::filesystem::path& mesh_path, ClothSolverKind solver_kind)
 {
 	const int existing_cloth_count = cloth_count();
-	const ClothId cloth_id = allocate_cloth_id();
 	ClothObject& cloth_object = create_object<ClothObject>(
-		cloth_id,
-		make_default_cloth_name(cloth_id, solver_kind),
+		std::string(),
 		mesh_path);
+	cloth_object.set_display_name(make_default_cloth_name(cloth_object.id(), solver_kind));
 	attach_solver(cloth_object, solver_kind);
 	cloth_object.transform().position = glm::vec3(0.35f * static_cast<float>(existing_cloth_count), 0.0f, 0.0f);
-	selected_cloth_id_ = cloth_id;
+	selected_cloth_id_ = cloth_object.id();
 	notify_changed();
 	return cloth_object;
 }
@@ -249,35 +247,14 @@ void ClothWorld::set_change_callback(ChangeCallback change_callback)
 	change_callback_ = std::move(change_callback);
 }
 
-ClothId ClothWorld::allocate_cloth_id()
-{
-	return next_cloth_id_++;
-}
-
 ClothObject* ClothWorld::find_cloth(ClothId cloth_id)
 {
-	for (ClothObject* cloth_object : get_objects<ClothObject>())
-	{
-		if (cloth_object->cloth_id() == cloth_id)
-		{
-			return cloth_object;
-		}
-	}
-
-	return nullptr;
+	return find_object<ClothObject>(cloth_id);
 }
 
 const ClothObject* ClothWorld::find_cloth(ClothId cloth_id) const
 {
-	for (const ClothObject* cloth_object : get_objects<ClothObject>())
-	{
-		if (cloth_object->cloth_id() == cloth_id)
-		{
-			return cloth_object;
-		}
-	}
-
-	return nullptr;
+	return find_object<ClothObject>(cloth_id);
 }
 
 int ClothWorld::cloth_count() const

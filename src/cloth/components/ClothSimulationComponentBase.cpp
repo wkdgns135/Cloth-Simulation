@@ -10,7 +10,7 @@
 
 #include "cloth/core/Cloth.h"
 #include "cloth/core/Particle.h"
-#include "engine/core/Object.h"
+#include "engine/core/WorldObject.h"
 #include "engine/core/World.h"
 #include "engine/objects/CollisionObject.h"
 
@@ -385,7 +385,7 @@ void ClothSimulationComponentBase::solve_collision_objects()
 		return;
 	}
 
-	Object* object_owner = owner();
+	WorldObject* object_owner = owner();
 	if (!object_owner || !object_owner->world())
 	{
 		return;
@@ -432,7 +432,7 @@ void ClothSimulationComponentBase::solve_collision_objects()
 
 glm::vec3 ClothSimulationComponentBase::world_to_local_point(const glm::vec3& world_point) const
 {
-	if (const Object* object_owner = owner())
+	if (const WorldObject* object_owner = owner())
 	{
 		const glm::mat4 inverse_transform = glm::inverse(object_owner->transform().matrix());
 		return glm::vec3(inverse_transform * glm::vec4(world_point, 1.0f));
@@ -443,7 +443,7 @@ glm::vec3 ClothSimulationComponentBase::world_to_local_point(const glm::vec3& wo
 
 glm::vec3 ClothSimulationComponentBase::local_to_world_point(const glm::vec3& local_point) const
 {
-	if (const Object* object_owner = owner())
+	if (const WorldObject* object_owner = owner())
 	{
 		return glm::vec3(object_owner->transform().matrix() * glm::vec4(local_point, 1.0f));
 	}

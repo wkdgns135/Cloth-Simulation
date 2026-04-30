@@ -1,18 +1,18 @@
 #pragma once
 
-#include "engine/lifecycle/Lifecycle.h"
+#include "engine/core/Object.h"
 
-class Object;
+class WorldObject;
 
-class Component : public Lifecycle
+class Component : public Object
 {
 public:
 	~Component() override = default;
 
-	void set_owner(Object* owner) { owner_ = owner; }
-	Object* owner() { return owner_; }
-	const Object* owner() const { return owner_; }
+	void set_owner(WorldObject* owner) { owner_ = owner; }
+	WorldObject* owner() { return owner_; }
+	const WorldObject* owner() const { return owner_; }
 
 private:
-	Object* owner_ = nullptr;
+	WorldObject* owner_ = nullptr;
 };
