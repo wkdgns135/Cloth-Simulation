@@ -2,6 +2,8 @@
 
 #include <QDockWidget>
 
+#include "engine/core/Property.h"
+
 class QDoubleSpinBox;
 class QLabel;
 class QPushButton;
@@ -20,8 +22,11 @@ public:
 private:
 	void build_ui();
 	void refresh();
+	void refresh_transform_values();
+	void refresh_simulation_values();
+	void refresh_action_values();
 	void update_selected_cloth_position();
-	void update_selected_cloth_simulation_settings();
+	void update_selected_cloth_property(const QString& property_id, const PropertyValue& value);
 
 	ClothEditorController& controller_;
 	QLabel* selected_name_label_ = nullptr;

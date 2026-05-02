@@ -7,7 +7,8 @@
 #include <filesystem>
 #include <vector>
 
-#include "cloth/ClothObject.h"
+#include "cloth/ClothWorld.h"
+#include "engine/core/Property.h"
 
 class Engine;
 
@@ -16,6 +17,17 @@ class ClothEditorController : public QObject
 	Q_OBJECT
 
 public:
+	struct PropertyViewState
+	{
+		std::uint64_t source_object_id = 0;
+		QString id;
+		QString label;
+		QString group;
+		PropertyType type = PropertyType::Float;
+		bool editable = true;
+		PropertyValue value = false;
+	};
+
 	struct ClothViewState
 	{
 		std::uint64_t id = 0;
@@ -31,6 +43,7 @@ public:
 		float position_z = 0.0f;
 		float damping = 0.99f;
 		int constraint_iterations = 20;
+		std::vector<PropertyViewState> properties;
 	};
 
 	struct WorldViewState
@@ -49,19 +62,23 @@ public:
 	void create_mesh_cloth(const std::filesystem::path& mesh_path, ClothSolverKind solver_kind);
 	void spawn_sphere_from_view();
 	void set_selected_cloth(std::uint64_t cloth_id);
+	void update_selected_cloth_property(std::uint64_t source_object_id, const QString& property_id, const PropertyValue& value);
 	void update_selected_cloth_position(float x, float y, float z);
-	void update_selected_cloth_simulation_settings(float damping, int constraint_iterations);
 	void reset_selected_cloth();
 	void toggle_selected_cloth_anchors();
 	void delete_selected_cloth();
 
 signals:
 	void snapshot_updated();
+	void selected_cloth_value_updated(QString value_id);
 
 private:
 	void bind_world_notifications();
+	void handle_world_change(const ClothWorld::ChangeEvent& change);
 	void request_snapshot();
 	void apply_snapshot(WorldViewState snapshot);
+	ClothViewState* find_cloth_view(std::uint64_t cloth_id);
+	bool apply_cloth_value_change(const ClothWorld::ChangeEvent& change);
 
 	Engine& engine_;
 	WorldViewState snapshot_;

@@ -143,3 +143,25 @@ void WorldObject::request_destroy()
 	destroy_requested_ = true;
 	world_->request_destroy_object(this);
 }
+
+void WorldObject::on_property_changed(const PropertyBase& property)
+{
+	if (world_)
+	{
+		world_->notify_world_object_property_changed(*this, property);
+		return;
+	}
+
+	Object::on_property_changed(property);
+}
+
+void WorldObject::on_component_property_changed(const Component& component, const PropertyBase& property)
+{
+	if (world_)
+	{
+		world_->notify_component_property_changed(*this, component, property);
+		return;
+	}
+
+	Object::on_property_changed(property);
+}

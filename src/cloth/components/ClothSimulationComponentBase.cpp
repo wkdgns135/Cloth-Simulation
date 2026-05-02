@@ -138,7 +138,7 @@ void ClothSimulationComponentBase::start()
 void ClothSimulationComponentBase::integrate(float delta_time)
 {
 	auto& particles = cloth_.get_particles();
-	const glm::vec3 acceleration = delta_time * delta_time * (gravity_ + external_acceleration_);
+	const glm::vec3 acceleration = delta_time * delta_time * (gravity() + external_acceleration_);
 	external_acceleration_ = glm::vec3(0.0f);
 
 	for (Particle& particle : particles)
@@ -149,7 +149,7 @@ void ClothSimulationComponentBase::integrate(float delta_time)
 			continue;
 		}
 
-		const glm::vec3 velocity = (particle.position - particle.prev_position) * damping_;
+		const glm::vec3 velocity = (particle.position - particle.prev_position) * damping();
 		particle.prev_position = particle.position;
 		particle.position += velocity + acceleration;
 	}
@@ -364,7 +364,7 @@ bool ClothSimulationComponentBase::evaluate_bending_constraint(
 
 float ClothSimulationComponentBase::per_iteration_stiffness(float stiffness) const
 {
-	if (constraint_iterations_ <= 0)
+	if (constraint_iterations() <= 0)
 	{
 		return 0.0f;
 	}
@@ -375,12 +375,12 @@ float ClothSimulationComponentBase::per_iteration_stiffness(float stiffness) con
 		return clamped_stiffness;
 	}
 
-	return 1.0f - std::pow(1.0f - clamped_stiffness, 1.0f / static_cast<float>(constraint_iterations_));
+	return 1.0f - std::pow(1.0f - clamped_stiffness, 1.0f / static_cast<float>(constraint_iterations()));
 }
 
 void ClothSimulationComponentBase::solve_collision_objects()
 {
-	if (!collision_enabled_)
+	if (!collision_enabled())
 	{
 		return;
 	}
@@ -418,7 +418,7 @@ void ClothSimulationComponentBase::solve_collision_objects()
 			}
 
 			collided =
-				collision_object->resolve_particle_collision(world_position, world_prev_position, collision_margin_)
+				collision_object->resolve_particle_collision(world_position, world_prev_position, collision_margin())
 				|| collided;
 		}
 

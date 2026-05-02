@@ -13,6 +13,9 @@ public:
 	WorldObject* owner() { return owner_; }
 	const WorldObject* owner() const { return owner_; }
 
+protected:
+	void on_property_changed(const PropertyBase& property) override;
+
 private:
 	WorldObject* owner_ = nullptr;
 };

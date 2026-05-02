@@ -24,20 +24,58 @@ void Object::set_display_name(std::string display_name)
 	display_name_ = std::move(display_name);
 }
 
-std::vector<PropertyDesc> Object::property_descriptors() const
+void Object::on_property_changed(const PropertyBase& property)
 {
-	return {};
+	static_cast<void>(property);
+}
+
+void Object::register_property(PropertyBase& property)
+{
+	properties_.push_back(&property);
 }
 
 std::optional<PropertyValue> Object::get_property(std::string_view property_id) const
 {
-	static_cast<void>(property_id);
+	if (const PropertyBase* property = find_property(property_id))
+	{
+		return property->value();
+	}
+
 	return std::nullopt;
 }
 
 bool Object::set_property(std::string_view property_id, const PropertyValue& value)
 {
-	static_cast<void>(property_id);
-	static_cast<void>(value);
+	if (PropertyBase* property = find_property(property_id))
+	{
+		return property->set_value(value);
+	}
+
 	return false;
+}
+
+PropertyBase* Object::find_property(std::string_view property_id)
+{
+	for (PropertyBase* property : properties_)
+	{
+		if (property && property->id() == property_id)
+		{
+			return property;
+		}
+	}
+
+	return nullptr;
+}
+
+const PropertyBase* Object::find_property(std::string_view property_id) const
+{
+	for (const PropertyBase* property : properties_)
+	{
+		if (property && property->id() == property_id)
+		{
+			return property;
+		}
+	}
+
+	return nullptr;
 }

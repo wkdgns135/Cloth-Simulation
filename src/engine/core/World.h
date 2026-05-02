@@ -113,6 +113,8 @@ public:
 	bool on_wheel_scrolled(const WheelInputEvent& event);
 	void set_viewport_size(int width, int height);
 	void request_destroy_object(WorldObject* object);
+	void notify_world_object_property_changed(const WorldObject& object, const PropertyBase& property);
+	void notify_component_property_changed(const WorldObject& owner, const Component& component, const PropertyBase& property);
 
 	RenderScene build_render_scene() const;
 
@@ -124,6 +126,8 @@ protected:
 	virtual bool native_on_pointer_moved(const PointerInputEvent& event);
 	virtual bool native_on_click(const ClickInputEvent& event);
 	virtual bool native_on_wheel_scrolled(const WheelInputEvent& event);
+	virtual void on_world_object_property_changed(const WorldObject& object, const PropertyBase& property);
+	virtual void on_component_property_changed(const WorldObject& owner, const Component& component, const PropertyBase& property);
 	bool destroy_object(WorldObject* object);
 
 	IndexedStore<WorldObject> world_objects_;

@@ -29,9 +29,12 @@ set(ENGINE_SOURCES
     src/engine/core/WorldObject.h
     src/engine/core/WorldObject.cpp
     src/engine/core/Component.h
+    src/engine/core/Component.cpp
     src/engine/core/IndexedStore.h
     src/engine/core/Object.h
     src/engine/core/Object.cpp
+    src/engine/core/Property.h
+    src/engine/core/Property.cpp
     src/engine/core/Transform.h
     src/engine/core/World.h
     src/engine/core/World.cpp
@@ -90,7 +93,8 @@ set(PLATFORM_QT_SOURCES
     src/platform/qt/ViewportWidget.cpp
 )
 
-add_executable(${PROJECT_NAME})
+add_executable(${PROJECT_NAME}
+        src/engine/core/Property.h)
 
 target_sources(${PROJECT_NAME} PRIVATE
     ${APP_SOURCES}

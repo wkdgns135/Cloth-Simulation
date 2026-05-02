@@ -56,26 +56,16 @@ public:
 	explicit ClothSimulationComponentBase(Cloth& cloth);
 
 	void start() override;
-
-	void set_gravity(const glm::vec3& gravity) { gravity_ = gravity; }
-	const glm::vec3& gravity() const { return gravity_; }
-
 	void set_external_acceleration(const glm::vec3& acceleration) { external_acceleration_ = acceleration; }
 	void add_external_acceleration(const glm::vec3& acceleration) { external_acceleration_ += acceleration; }
 	const glm::vec3& external_acceleration() const { return external_acceleration_; }
 
-	void set_damping(float damping) { damping_ = std::clamp(damping, 0.0f, 1.0f); }
-	float damping() const { return damping_; }
-
-	void set_constraint_iterations(int iterations) { constraint_iterations_ = std::max(0, iterations); }
-	int constraint_iterations() const { return constraint_iterations_; }
-
-	void set_collision_enabled(bool enabled) { collision_enabled_ = enabled; }
-	bool collision_enabled() const { return collision_enabled_; }
-
-	void set_collision_margin(float margin) { collision_margin_ = std::max(0.0f, margin); }
-	float collision_margin() const { return collision_margin_; }
-
+	PROPERTY(glm::vec3, gravity, "Simulation", "Gravity", glm::vec3(0.0f, -9.8f, 0.0f))
+	PROPERTY_RANGE_NORMALIZED(float, damping, "Simulation", "Damping", 0.99f, 0.0f, 1.0f, 0.01f, [](float value) { return std::clamp(value, 0.0f, 1.0f); })
+	PROPERTY_RANGE_NORMALIZED(int, constraint_iterations, "Simulation", "Constraint Iterations", 20, 1, 128, 1, [](int value) { return std::max(0, value); })
+	PROPERTY(bool, collision_enabled, "Simulation", "Collision Enabled", true)
+	PROPERTY_RANGE_NORMALIZED(float, collision_margin, "Simulation", "Collision Margin", 0.01f, 0.0f, 1.0f, 0.001f, [](float value) { return std::max(0.0f, value); })
+	
 protected:
 	Cloth& cloth() { return cloth_; }
 	const Cloth& cloth() const { return cloth_; }
@@ -104,11 +94,6 @@ private:
 	Cloth& cloth_;
 	std::vector<DistanceConstraint> distance_constraints_;
 	std::vector<BendingConstraint> bending_constraints_;
-	glm::vec3 gravity_ = glm::vec3(0.0f, -9.8f, 0.0f);
 	glm::vec3 external_acceleration_ = glm::vec3(0.0f);
-	float damping_ = 0.99f;
-	int constraint_iterations_ = 20;
-	bool collision_enabled_ = true;
-	float collision_margin_ = 0.01f;
 	std::uint64_t cached_topology_revision_ = 0;
 };

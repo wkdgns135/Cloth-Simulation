@@ -139,7 +139,13 @@ public:
 		return dynamic_cast<const T*>(components_.find(component_id));
 	}
 
+protected:
+	void on_property_changed(const PropertyBase& property) override;
+	void on_component_property_changed(const Component& component, const PropertyBase& property);
+
 private:
+	friend class Component;
+
 	Transform transform_;
 	World* world_ = nullptr;
 	IndexedStore<Component> components_;

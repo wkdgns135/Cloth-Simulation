@@ -313,6 +313,16 @@ void World::set_viewport_size(int width, int height)
 	viewport_height_ = height > 0 ? height : 1;
 }
 
+void World::notify_world_object_property_changed(const WorldObject& object, const PropertyBase& property)
+{
+	on_world_object_property_changed(object, property);
+}
+
+void World::notify_component_property_changed(const WorldObject& owner, const Component& component, const PropertyBase& property)
+{
+	on_component_property_changed(owner, component, property);
+}
+
 RenderScene World::build_render_scene() const
 {
 	RenderScene scene;
@@ -569,6 +579,19 @@ bool World::native_on_wheel_scrolled(const WheelInputEvent& event)
 {
 	static_cast<void>(event);
 	return false;
+}
+
+void World::on_world_object_property_changed(const WorldObject& object, const PropertyBase& property)
+{
+	static_cast<void>(object);
+	static_cast<void>(property);
+}
+
+void World::on_component_property_changed(const WorldObject& owner, const Component& component, const PropertyBase& property)
+{
+	static_cast<void>(owner);
+	static_cast<void>(component);
+	static_cast<void>(property);
 }
 
 bool World::destroy_object(WorldObject* object)

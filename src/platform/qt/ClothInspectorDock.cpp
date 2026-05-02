@@ -20,6 +20,21 @@ void configure_double_spin_box(QDoubleSpinBox* spin_box, double minimum, double 
 	spin_box->setDecimals(decimals);
 	spin_box->setKeyboardTracking(false);
 }
+
+const ClothEditorController::PropertyViewState* find_selected_property(
+	const ClothEditorController::ClothViewState& cloth,
+	const QString& property_id)
+{
+	for (const ClothEditorController::PropertyViewState& property : cloth.properties)
+	{
+		if (property.id == property_id)
+		{
+			return &property;
+		}
+	}
+
+	return nullptr;
+}
 }
 
 ClothInspectorDock::ClothInspectorDock(ClothEditorController& controller, QWidget* parent)
@@ -30,6 +45,27 @@ ClothInspectorDock::ClothInspectorDock(ClothEditorController& controller, QWidge
 	build_ui();
 
 	connect(&controller_, &ClothEditorController::snapshot_updated, this, [this]() {
+		refresh();
+	});
+	connect(&controller_, &ClothEditorController::selected_cloth_value_updated, this, [this](const QString& value_id) {
+		if (value_id == "position")
+		{
+			refresh_transform_values();
+			return;
+		}
+
+		if (value_id == "anchors_enabled")
+		{
+			refresh_action_values();
+			return;
+		}
+
+		if (value_id == "damping" || value_id == "constraint_iterations")
+		{
+			refresh_simulation_values();
+			return;
+		}
+
 		refresh();
 	});
 
@@ -88,10 +124,10 @@ void ClothInspectorDock::build_ui()
 	layout->addWidget(simulation_group);
 
 	connect(damping_spin_, qOverload<double>(&QDoubleSpinBox::valueChanged), this, [this](double) {
-		update_selected_cloth_simulation_settings();
+		update_selected_cloth_property("damping", static_cast<float>(damping_spin_->value()));
 	});
 	connect(constraint_iterations_spin_, qOverload<int>(&QSpinBox::valueChanged), this, [this](int) {
-		update_selected_cloth_simulation_settings();
+		update_selected_cloth_property("constraint_iterations", constraint_iterations_spin_->value());
 	});
 
 	QGroupBox* actions_group = new QGroupBox("Actions", inspector_panel_);
@@ -139,19 +175,9 @@ void ClothInspectorDock::refresh()
 	selected_topology_label_->setText(QString("%1 particles / %2 triangles")
 		.arg(cloth->particle_count)
 		.arg(cloth->triangle_count));
-	toggle_anchors_button_->setText(cloth->anchors_enabled ? "Disable Anchors" : "Enable Anchors");
-
-	const QSignalBlocker block_x(position_x_spin_);
-	const QSignalBlocker block_y(position_y_spin_);
-	const QSignalBlocker block_z(position_z_spin_);
-	const QSignalBlocker block_damping(damping_spin_);
-	const QSignalBlocker block_iterations(constraint_iterations_spin_);
-
-	position_x_spin_->setValue(cloth->position_x);
-	position_y_spin_->setValue(cloth->position_y);
-	position_z_spin_->setValue(cloth->position_z);
-	damping_spin_->setValue(cloth->damping);
-	constraint_iterations_spin_->setValue(cloth->constraint_iterations);
+	refresh_transform_values();
+	refresh_simulation_values();
+	refresh_action_values();
 }
 
 void ClothInspectorDock::update_selected_cloth_position()
@@ -162,9 +188,63 @@ void ClothInspectorDock::update_selected_cloth_position()
 		static_cast<float>(position_z_spin_->value()));
 }
 
-void ClothInspectorDock::update_selected_cloth_simulation_settings()
+void ClothInspectorDock::update_selected_cloth_property(const QString& property_id, const PropertyValue& value)
 {
-	controller_.update_selected_cloth_simulation_settings(
-		static_cast<float>(damping_spin_->value()),
-		constraint_iterations_spin_->value());
+	const ClothEditorController::ClothViewState* cloth = controller_.selected_cloth();
+	if (!cloth)
+	{
+		return;
+	}
+
+	const ClothEditorController::PropertyViewState* property = find_selected_property(*cloth, property_id);
+	if (!property)
+	{
+		return;
+	}
+
+	controller_.update_selected_cloth_property(property->source_object_id, property->id, value);
+}
+
+void ClothInspectorDock::refresh_transform_values()
+{
+	const ClothEditorController::ClothViewState* cloth = controller_.selected_cloth();
+	if (!cloth)
+	{
+		return;
+	}
+
+	const QSignalBlocker block_x(position_x_spin_);
+	const QSignalBlocker block_y(position_y_spin_);
+	const QSignalBlocker block_z(position_z_spin_);
+
+	position_x_spin_->setValue(cloth->position_x);
+	position_y_spin_->setValue(cloth->position_y);
+	position_z_spin_->setValue(cloth->position_z);
+}
+
+void ClothInspectorDock::refresh_simulation_values()
+{
+	const ClothEditorController::ClothViewState* cloth = controller_.selected_cloth();
+	if (!cloth)
+	{
+		return;
+	}
+
+	const QSignalBlocker block_damping(damping_spin_);
+	const QSignalBlocker block_iterations(constraint_iterations_spin_);
+
+	damping_spin_->setValue(cloth->damping);
+	constraint_iterations_spin_->setValue(cloth->constraint_iterations);
+}
+
+void ClothInspectorDock::refresh_action_values()
+{
+	const ClothEditorController::ClothViewState* cloth = controller_.selected_cloth();
+	if (!cloth)
+	{
+		toggle_anchors_button_->setText("Toggle Anchors");
+		return;
+	}
+
+	toggle_anchors_button_->setText(cloth->anchors_enabled ? "Disable Anchors" : "Enable Anchors");
 }
