@@ -23,12 +23,12 @@ public:
 		{
 			SnapshotInvalidated,
 			SelectionChanged,
-			ClothValueChanged,
+			ObjectValueChanged,
 		};
 
 		Kind kind = Kind::SnapshotInvalidated;
-		ClothId cloth_id = 0;
-		ClothId selected_cloth_id = 0;
+		ObjectId object_id = 0;
+		ObjectId selected_object_id = 0;
 		ObjectId source_object_id = 0;
 		std::string value_id;
 		std::optional<PropertyValue> value;
@@ -44,11 +44,12 @@ public:
 	SphereObject& create_sphere_object(float radius, const glm::vec3& position);
 	void spawn_sphere_projectile();
 	bool destroy_cloth(ClothId cloth_id);
+	bool select_object(ObjectId object_id);
 	bool select_cloth(ClothId cloth_id);
-	bool set_cloth_property(ClothId cloth_id, ObjectId source_object_id, std::string property_id, const PropertyValue& value);
 	bool reset_cloth(ClothId cloth_id);
 	bool toggle_cloth_anchors(ClothId cloth_id);
 	void set_change_callback(ChangeCallback change_callback);
+	ObjectId selected_object_id() const { return selected_object_id_; }
 	ClothId selected_cloth_id() const { return selected_cloth_id_; }
 
 private:
@@ -59,10 +60,12 @@ private:
 	void attach_solver(ClothObject& cloth_object, ClothSolverKind solver_kind);
 	void notify_snapshot_invalidated() const;
 	void notify_selection_changed() const;
-	void notify_cloth_value_changed(ClothId cloth_id, ObjectId source_object_id, std::string value_id, PropertyValue value) const;
+	void notify_object_value_changed(ObjectId object_id, ObjectId source_object_id, std::string value_id, PropertyValue value) const;
+	bool on_world_object_clicked(WorldObject& object, const ClickInputEvent& event) override;
 	void on_world_object_property_changed(const WorldObject& object, const PropertyBase& property) override;
 	void on_component_property_changed(const WorldObject& owner, const Component& component, const PropertyBase& property) override;
 
+	ObjectId selected_object_id_ = 0;
 	ClothId selected_cloth_id_ = 0;
 	ChangeCallback change_callback_;
 };

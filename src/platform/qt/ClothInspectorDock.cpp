@@ -28,11 +28,11 @@ void configure_double_spin_box(QDoubleSpinBox* spin_box, double minimum, double 
 }
 
 const ClothEditorController::PropertyViewState* find_selected_property(
-	const ClothEditorController::ClothViewState& cloth,
+	const ClothEditorController::ObjectViewState& object,
 	std::uint64_t source_object_id,
 	const QString& property_id)
 {
-	for (const ClothEditorController::PropertyViewState& property : cloth.properties)
+	for (const ClothEditorController::PropertyViewState& property : object.properties)
 	{
 		if (property.source_object_id == source_object_id && property.id == property_id)
 		{
@@ -96,7 +96,7 @@ ClothInspectorDock::ClothInspectorDock(ClothEditorController& controller, QWidge
 	connect(&controller_, &ClothEditorController::snapshot_updated, this, [this]() {
 		refresh();
 	});
-	connect(&controller_, &ClothEditorController::selected_cloth_value_updated, this, [this](const QString& value_id) {
+	connect(&controller_, &ClothEditorController::selected_object_value_updated, this, [this](const QString& value_id) {
 		static_cast<void>(value_id);
 		refresh_property_values();
 	});
@@ -117,9 +117,9 @@ void ClothInspectorDock::build_ui()
 	selected_solver_label_ = new QLabel("-", info_group);
 	selected_topology_label_ = new QLabel("-", info_group);
 	info_layout->addRow("Name", selected_name_label_);
-	info_layout->addRow("Source", selected_source_label_);
-	info_layout->addRow("Solver", selected_solver_label_);
-	info_layout->addRow("Topology", selected_topology_label_);
+	info_layout->addRow("Type", selected_source_label_);
+	info_layout->addRow("Details", selected_solver_label_);
+	info_layout->addRow("Metrics", selected_topology_label_);
 	layout->addWidget(info_group);
 
 	QGroupBox* properties_group = new QGroupBox("Properties", inspector_panel_);
@@ -132,6 +132,8 @@ void ClothInspectorDock::build_ui()
 	QVBoxLayout* actions_layout = new QVBoxLayout(actions_group);
 	QPushButton* reset_cloth_button = new QPushButton("Reset", actions_group);
 	QPushButton* delete_cloth_button = new QPushButton("Delete", actions_group);
+	reset_cloth_button->setObjectName("resetClothButton");
+	delete_cloth_button->setObjectName("deleteClothButton");
 	actions_layout->addWidget(reset_cloth_button);
 	actions_layout->addWidget(delete_cloth_button);
 	layout->addWidget(actions_group);
@@ -149,10 +151,10 @@ void ClothInspectorDock::build_ui()
 
 void ClothInspectorDock::refresh()
 {
-	const ClothEditorController::ClothViewState* cloth = controller_.selected_cloth();
-	inspector_panel_->setEnabled(cloth != nullptr);
+	const ClothEditorController::ObjectViewState* object = controller_.selected_object();
+	inspector_panel_->setEnabled(object != nullptr);
 
-	if (!cloth)
+	if (!object)
 	{
 		selected_name_label_->setText("-");
 		selected_source_label_->setText("-");
@@ -162,19 +164,27 @@ void ClothInspectorDock::refresh()
 		return;
 	}
 
-	selected_name_label_->setText(cloth->name);
-	selected_source_label_->setText(QString("%1  |  %2").arg(cloth->source_kind_label, cloth->source_label));
-	selected_solver_label_->setText(cloth->solver_label);
-	selected_topology_label_->setText(QString("%1 particles / %2 triangles")
-		.arg(cloth->particle_count)
-		.arg(cloth->triangle_count));
+	selected_name_label_->setText(object->name);
+	selected_source_label_->setText(object->type_label);
+	selected_solver_label_->setText(object->detail_label.isEmpty() ? "-" : object->detail_label);
+	selected_topology_label_->setText(object->metrics_label.isEmpty() ? "-" : object->metrics_label);
+
+	if (QPushButton* reset_button = inspector_panel_->findChild<QPushButton*>("resetClothButton"))
+	{
+		reset_button->setEnabled(object->is_cloth);
+	}
+	if (QPushButton* delete_button = inspector_panel_->findChild<QPushButton*>("deleteClothButton"))
+	{
+		delete_button->setEnabled(object->is_cloth);
+	}
+
 	rebuild_property_editors();
 }
 
 void ClothInspectorDock::refresh_property_values()
 {
-	const ClothEditorController::ClothViewState* cloth = controller_.selected_cloth();
-	if (!cloth)
+	const ClothEditorController::ObjectViewState* object = controller_.selected_object();
+	if (!object)
 	{
 		return;
 	}
@@ -182,7 +192,7 @@ void ClothInspectorDock::refresh_property_values()
 	for (const PropertyEditorBinding& binding : property_editors_)
 	{
 		const ClothEditorController::PropertyViewState* property =
-			find_selected_property(*cloth, binding.source_object_id, binding.property_id);
+			find_selected_property(*object, binding.source_object_id, binding.property_id);
 		if (!property)
 		{
 			continue;
@@ -263,8 +273,8 @@ void ClothInspectorDock::rebuild_property_editors()
 {
 	clear_property_editors();
 
-	const ClothEditorController::ClothViewState* cloth = controller_.selected_cloth();
-	if (!cloth)
+	const ClothEditorController::ObjectViewState* object = controller_.selected_object();
+	if (!object)
 	{
 		return;
 	}
@@ -272,7 +282,7 @@ void ClothInspectorDock::rebuild_property_editors()
 	QString current_section_title;
 	QFormLayout* current_form_layout = nullptr;
 
-	for (const ClothEditorController::PropertyViewState& property : cloth->properties)
+	for (const ClothEditorController::PropertyViewState& property : object->properties)
 	{
 		const QString section_title = property_section_title(property);
 		if (!current_form_layout || section_title != current_section_title)
@@ -298,7 +308,7 @@ void ClothInspectorDock::rebuild_property_editors()
 			binding.editor = check_box;
 			binding.check_box = check_box;
 			connect(check_box, &QCheckBox::toggled, this, [this, source_object_id = property.source_object_id, property_id = property.id](bool checked) {
-				update_selected_cloth_property(source_object_id, property_id, checked);
+				update_selected_object_property(source_object_id, property_id, checked);
 			});
 			current_form_layout->addRow(property.label, check_box);
 			break;
@@ -313,7 +323,7 @@ void ClothInspectorDock::rebuild_property_editors()
 			binding.editor = spin_box;
 			binding.spin_box = spin_box;
 			connect(spin_box, qOverload<int>(&QSpinBox::valueChanged), this, [this, source_object_id = property.source_object_id, property_id = property.id](int value) {
-				update_selected_cloth_property(source_object_id, property_id, value);
+				update_selected_object_property(source_object_id, property_id, value);
 			});
 			current_form_layout->addRow(property.label, spin_box);
 			break;
@@ -331,7 +341,7 @@ void ClothInspectorDock::rebuild_property_editors()
 			binding.editor = spin_box;
 			binding.double_spin_box = spin_box;
 			connect(spin_box, qOverload<double>(&QDoubleSpinBox::valueChanged), this, [this, source_object_id = property.source_object_id, property_id = property.id](double value) {
-				update_selected_cloth_property(source_object_id, property_id, static_cast<float>(value));
+				update_selected_object_property(source_object_id, property_id, static_cast<float>(value));
 			});
 			current_form_layout->addRow(property.label, spin_box);
 			break;
@@ -362,7 +372,7 @@ void ClothInspectorDock::rebuild_property_editors()
 			binding.vec3_z = z_spin;
 
 			const auto commit_vec3 = [this, source_object_id = property.source_object_id, property_id = property.id, x_spin, y_spin, z_spin]() {
-				update_selected_cloth_property(
+				update_selected_object_property(
 					source_object_id,
 					property_id,
 					glm::vec3(
@@ -384,7 +394,7 @@ void ClothInspectorDock::rebuild_property_editors()
 			binding.editor = line_edit;
 			binding.line_edit = line_edit;
 			connect(line_edit, &QLineEdit::editingFinished, this, [this, source_object_id = property.source_object_id, property_id = property.id, line_edit]() {
-				update_selected_cloth_property(source_object_id, property_id, line_edit->text().toStdString());
+				update_selected_object_property(source_object_id, property_id, line_edit->text().toStdString());
 			});
 			current_form_layout->addRow(property.label, line_edit);
 			break;
@@ -418,10 +428,10 @@ void ClothInspectorDock::clear_property_editors()
 	}
 }
 
-void ClothInspectorDock::update_selected_cloth_property(
+void ClothInspectorDock::update_selected_object_property(
 	std::uint64_t source_object_id,
 	const QString& property_id,
 	const PropertyValue& value)
 {
-	controller_.update_selected_cloth_property(source_object_id, property_id, value);
+	controller_.update_selected_object_property(source_object_id, property_id, value);
 }

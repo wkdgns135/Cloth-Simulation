@@ -24,7 +24,7 @@ private:
 	void spawn_sphere();
 
 	ClothEditorController& controller_;
-	QListWidget* cloth_list_widget_ = nullptr;
+	QListWidget* object_list_widget_ = nullptr;
 	QComboBox* new_solver_combo_ = nullptr;
 	QSpinBox* new_grid_width_spin_ = nullptr;
 	QSpinBox* new_grid_height_spin_ = nullptr;

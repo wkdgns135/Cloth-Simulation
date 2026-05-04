@@ -9,7 +9,6 @@
 
 #include <glm/ext/scalar_relational.hpp>
 
-#include "cloth/ClothWorld.h"
 #include "components/ClothInteractionComponent.h"
 #include "components/ClothRenderComponent.h"
 #include "components/ClothSimulationComponentBase.h"
@@ -212,13 +211,6 @@ bool ClothObject::hit_test(const glm::vec3& ray_origin, const glm::vec3& ray_dir
 bool ClothObject::on_click(const ClickInputEvent& event)
 {
 	static_cast<void>(event);
-
-	if (ClothWorld* cloth_world = dynamic_cast<ClothWorld*>(world()))
-	{
-		cloth_world->select_cloth(id());
-		return true;
-	}
-
 	return false;
 }
 

@@ -104,6 +104,43 @@ void SphereObject::update(float delta_time)
 	}
 }
 
+bool SphereObject::hit_test(const glm::vec3& ray_origin, const glm::vec3& ray_direction, float& hit_distance) const
+{
+	const glm::vec3 center = get_object_world_position();
+	const float radius = world_radius();
+	const glm::vec3 offset = ray_origin - center;
+
+	const float a = glm::dot(ray_direction, ray_direction);
+	const float b = 2.0f * glm::dot(offset, ray_direction);
+	const float c = glm::dot(offset, offset) - radius * radius;
+	const float discriminant = b * b - 4.0f * a * c;
+	if (discriminant < 0.0f || a <= kCollisionEpsilon)
+	{
+		return false;
+	}
+
+	const float sqrt_discriminant = std::sqrt(discriminant);
+	const float inverse_denominator = 0.5f / a;
+	const float near_distance = (-b - sqrt_discriminant) * inverse_denominator;
+	const float far_distance = (-b + sqrt_discriminant) * inverse_denominator;
+	const float candidate_distance =
+		near_distance > kCollisionEpsilon ? near_distance
+		: (far_distance > kCollisionEpsilon ? far_distance : -1.0f);
+
+	if (candidate_distance <= kCollisionEpsilon)
+	{
+		return false;
+	}
+
+	if (candidate_distance >= hit_distance)
+	{
+		return false;
+	}
+
+	hit_distance = candidate_distance;
+	return true;
+}
+
 bool SphereObject::resolve_particle_collision(
 	glm::vec3& world_position,
 	glm::vec3& world_prev_position,

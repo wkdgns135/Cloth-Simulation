@@ -290,6 +290,7 @@ bool World::on_click(const ClickInputEvent& event)
 
 	if (WorldObject* clicked_object = pick_object(event.position))
 	{
+		handled = on_world_object_clicked(*clicked_object, event) || handled;
 		handled = clicked_object->on_click(event) || handled;
 	}
 
@@ -633,6 +634,13 @@ bool World::native_on_click(const ClickInputEvent& event)
 
 bool World::native_on_wheel_scrolled(const WheelInputEvent& event)
 {
+	static_cast<void>(event);
+	return false;
+}
+
+bool World::on_world_object_clicked(WorldObject& object, const ClickInputEvent& event)
+{
+	static_cast<void>(object);
 	static_cast<void>(event);
 	return false;
 }

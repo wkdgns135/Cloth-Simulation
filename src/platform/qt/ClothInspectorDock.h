@@ -46,7 +46,7 @@ private:
 	void refresh_property_values();
 	void rebuild_property_editors();
 	void clear_property_editors();
-	void update_selected_cloth_property(std::uint64_t source_object_id, const QString& property_id, const PropertyValue& value);
+	void update_selected_object_property(std::uint64_t source_object_id, const QString& property_id, const PropertyValue& value);
 
 	ClothEditorController& controller_;
 	QLabel* selected_name_label_ = nullptr;

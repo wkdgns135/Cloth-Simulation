@@ -2,6 +2,7 @@
 
 #include <exception>
 #include <memory>
+#include <string_view>
 #include <utility>
 
 #include <QMessageBox>
@@ -9,6 +10,10 @@
 #include <QWidget>
 
 #include "cloth/ClothWorld.h"
+#include "engine/objects/CameraObject.h"
+#include "engine/objects/DirectionalLightObject.h"
+#include "engine/objects/PlaneObject.h"
+#include "engine/objects/SphereObject.h"
 #include "engine/Engine.h"
 
 namespace
@@ -35,6 +40,58 @@ QString source_display_name(ClothSourceKind source_kind)
 	default:
 		return "Grid";
 	}
+}
+
+QString object_type_display_name(const WorldObject& object)
+{
+	if (dynamic_cast<const ClothObject*>(&object))
+	{
+		return "Cloth";
+	}
+	if (dynamic_cast<const CameraObject*>(&object))
+	{
+		return "Camera";
+	}
+	if (dynamic_cast<const DirectionalLightObject*>(&object))
+	{
+		return "Directional Light";
+	}
+	if (dynamic_cast<const PlaneObject*>(&object))
+	{
+		return "Plane";
+	}
+	if (dynamic_cast<const SphereObject*>(&object))
+	{
+		return "Sphere";
+	}
+
+	return "Object";
+}
+
+QString object_detail_display_name(const WorldObject& object)
+{
+	if (const auto* cloth_object = dynamic_cast<const ClothObject*>(&object))
+	{
+		return QString("%1  |  %2  |  %3")
+			.arg(source_display_name(cloth_object->source_kind()))
+			.arg(QString::fromStdString(cloth_object->source_label()))
+			.arg(solver_display_name(cloth_object->solver_kind()));
+	}
+
+	return QString();
+}
+
+QString object_metrics_display_name(const WorldObject& object)
+{
+	if (const auto* cloth_object = dynamic_cast<const ClothObject*>(&object))
+	{
+		const Cloth& cloth = cloth_object->cloth();
+		return QString("%1 particles / %2 triangles")
+			.arg(static_cast<int>(cloth.get_particles().size()))
+			.arg(static_cast<int>(cloth.get_indices().size() / 3));
+	}
+
+	return QString("%1 component(s)").arg(static_cast<int>(object.components().size()));
 }
 
 ClothEditorController::PropertyViewState make_property_view_state(
@@ -77,17 +134,23 @@ ClothEditorController::~ClothEditorController()
 	});
 }
 
-const ClothEditorController::ClothViewState* ClothEditorController::selected_cloth() const
+const ClothEditorController::ObjectViewState* ClothEditorController::selected_object() const
 {
-	for (const ClothViewState& cloth : snapshot_.cloths)
+	for (const ObjectViewState& object : snapshot_.objects)
 	{
-		if (cloth.id == snapshot_.selected_cloth_id)
+		if (object.id == snapshot_.selected_object_id)
 		{
-			return &cloth;
+			return &object;
 		}
 	}
 
 	return nullptr;
+}
+
+const ClothEditorController::ObjectViewState* ClothEditorController::selected_cloth() const
+{
+	const ObjectViewState* object = selected_object();
+	return object && object->is_cloth ? object : nullptr;
 }
 
 void ClothEditorController::create_grid_cloth(int width, int height, float spacing, ClothSolverKind solver_kind)
@@ -130,42 +193,38 @@ void ClothEditorController::spawn_sphere_from_view()
 	});
 }
 
-void ClothEditorController::set_selected_cloth(std::uint64_t cloth_id)
+void ClothEditorController::set_selected_object(std::uint64_t object_id)
 {
-	engine_.enqueue_world_job([cloth_id](World& world) {
+	engine_.enqueue_world_job([object_id](World& world) {
 		if (ClothWorld* cloth_world = dynamic_cast<ClothWorld*>(&world))
 		{
-			cloth_world->select_cloth(cloth_id);
+			cloth_world->select_object(object_id);
 		}
 	});
 }
 
-void ClothEditorController::update_selected_cloth_property(
+void ClothEditorController::update_selected_object_property(
 	std::uint64_t source_object_id,
 	const QString& property_id,
 	const PropertyValue& value)
 {
-	const ClothViewState* cloth = selected_cloth();
-	if (!cloth)
+	const ObjectViewState* object = selected_object();
+	if (!object)
 	{
 		return;
 	}
 
 	engine_.enqueue_world_job([
-		cloth_id = cloth->id,
 		source_object_id,
 		property_id = property_id.toStdString(),
 		value](World& world) {
-		if (ClothWorld* cloth_world = dynamic_cast<ClothWorld*>(&world))
-		{
-			cloth_world->set_cloth_property(cloth_id, source_object_id, std::move(property_id), value);
-		}
+		world.set_runtime_object_property(source_object_id, std::move(property_id), value);
 	});
 }
 
 void ClothEditorController::reset_selected_cloth()
 {
-	const ClothViewState* cloth = selected_cloth();
+		const ObjectViewState* cloth = selected_cloth();
 	if (!cloth)
 	{
 		return;
@@ -181,7 +240,7 @@ void ClothEditorController::reset_selected_cloth()
 
 void ClothEditorController::toggle_selected_cloth_anchors()
 {
-	const ClothViewState* cloth = selected_cloth();
+	const ObjectViewState* cloth = selected_cloth();
 	if (!cloth)
 	{
 		return;
@@ -197,7 +256,7 @@ void ClothEditorController::toggle_selected_cloth_anchors()
 
 void ClothEditorController::delete_selected_cloth()
 {
-	const ClothViewState* cloth = selected_cloth();
+	const ObjectViewState* cloth = selected_cloth();
 	if (!cloth)
 	{
 		return;
@@ -233,19 +292,19 @@ void ClothEditorController::handle_world_change(const ClothWorld::ChangeEvent& c
 		request_snapshot();
 		return;
 	case ClothWorld::ChangeEvent::Kind::SelectionChanged:
-		snapshot_.selected_cloth_id = change.selected_cloth_id;
+		snapshot_.selected_object_id = change.selected_object_id;
 		emit snapshot_updated();
 		return;
-	case ClothWorld::ChangeEvent::Kind::ClothValueChanged:
-		if (!apply_cloth_value_change(change))
+	case ClothWorld::ChangeEvent::Kind::ObjectValueChanged:
+		if (!apply_object_value_change(change))
 		{
 			request_snapshot();
 			return;
 		}
 
-		if (change.cloth_id == snapshot_.selected_cloth_id)
+		if (change.object_id == snapshot_.selected_object_id)
 		{
-			emit selected_cloth_value_updated(QString::fromStdString(change.value_id));
+			emit selected_object_value_updated(QString::fromStdString(change.value_id));
 		}
 		return;
 	}
@@ -265,39 +324,37 @@ void ClothEditorController::request_snapshot()
 
 		if (const ClothWorld* cloth_world = dynamic_cast<const ClothWorld*>(&world))
 		{
-			snapshot.selected_cloth_id = cloth_world->selected_cloth_id();
+			snapshot.selected_object_id = cloth_world->selected_object_id();
 		}
 
 		const World& current_world = world;
-		for (const ClothObject* cloth_object : current_world.get_objects<ClothObject>())
+		for (const WorldObject* world_object : current_world.get_objects<WorldObject>())
 		{
-			const Cloth& cloth = cloth_object->cloth();
-			ClothViewState cloth_view;
-			cloth_view.id = cloth_object->id();
-			cloth_view.name = QString::fromStdString(cloth_object->display_name());
-			cloth_view.source_label = QString::fromStdString(cloth_object->source_label());
-			cloth_view.source_kind_label = source_display_name(cloth_object->source_kind());
-			cloth_view.solver_label = solver_display_name(cloth_object->solver_kind());
-			cloth_view.particle_count = static_cast<int>(cloth.get_particles().size());
-			cloth_view.triangle_count = static_cast<int>(cloth.get_indices().size() / 3);
+			ObjectViewState object_view;
+			object_view.id = world_object->id();
+			object_view.name = QString::fromStdString(world_object->display_name());
+			object_view.type_label = object_type_display_name(*world_object);
+			object_view.detail_label = object_detail_display_name(*world_object);
+			object_view.metrics_label = object_metrics_display_name(*world_object);
+			object_view.is_cloth = dynamic_cast<const ClothObject*>(world_object) != nullptr;
 
-			if (!cloth_object->properties().empty())
+			if (!world_object->properties().empty())
 			{
-				for (const PropertyBase* property : cloth_object->properties())
+				for (const PropertyBase* property : world_object->properties())
 				{
 					if (!property)
 					{
 						continue;
 					}
 
-					cloth_view.properties.push_back(make_property_view_state(
-						cloth_object->id(),
-						"Cloth",
+					object_view.properties.push_back(make_property_view_state(
+						world_object->id(),
+						object_view.type_label,
 						*property));
 				}
 			}
 
-			for (const std::unique_ptr<Component>& component : cloth_object->components())
+			for (const std::unique_ptr<Component>& component : world_object->components())
 			{
 				if (!component || component->properties().empty())
 				{
@@ -316,14 +373,14 @@ void ClothEditorController::request_snapshot()
 						continue;
 					}
 
-					cloth_view.properties.push_back(make_property_view_state(
+					object_view.properties.push_back(make_property_view_state(
 						component->id(),
 						source_label,
 						*property));
 				}
 			}
 
-			snapshot.cloths.push_back(std::move(cloth_view));
+			snapshot.objects.push_back(std::move(object_view));
 		}
 
 		QMetaObject::invokeMethod(this, [this, snapshot = std::move(snapshot)]() mutable {
@@ -345,29 +402,29 @@ void ClothEditorController::apply_snapshot(WorldViewState snapshot)
 	}
 }
 
-ClothEditorController::ClothViewState* ClothEditorController::find_cloth_view(std::uint64_t cloth_id)
+ClothEditorController::ObjectViewState* ClothEditorController::find_object_view(std::uint64_t object_id)
 {
-	for (ClothViewState& cloth : snapshot_.cloths)
+	for (ObjectViewState& object : snapshot_.objects)
 	{
-		if (cloth.id == cloth_id)
+		if (object.id == object_id)
 		{
-			return &cloth;
+			return &object;
 		}
 	}
 
 	return nullptr;
 }
 
-bool ClothEditorController::apply_cloth_value_change(const ClothWorld::ChangeEvent& change)
+bool ClothEditorController::apply_object_value_change(const ClothWorld::ChangeEvent& change)
 {
-	ClothViewState* cloth = find_cloth_view(change.cloth_id);
-	if (!cloth || !change.value)
+	ObjectViewState* object = find_object_view(change.object_id);
+	if (!object || !change.value)
 	{
 		return false;
 	}
 
 	bool property_updated = false;
-	for (PropertyViewState& property : cloth->properties)
+	for (PropertyViewState& property : object->properties)
 	{
 		if (property.source_object_id == change.source_object_id
 			&& property.id == QString::fromStdString(change.value_id))

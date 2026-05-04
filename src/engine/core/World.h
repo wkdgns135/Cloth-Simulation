@@ -130,6 +130,7 @@ protected:
 	virtual bool native_on_pointer_moved(const PointerInputEvent& event);
 	virtual bool native_on_click(const ClickInputEvent& event);
 	virtual bool native_on_wheel_scrolled(const WheelInputEvent& event);
+	virtual bool on_world_object_clicked(WorldObject& object, const ClickInputEvent& event);
 	virtual void on_world_object_property_changed(const WorldObject& object, const PropertyBase& property);
 	virtual void on_component_property_changed(const WorldObject& owner, const Component& component, const PropertyBase& property);
 	bool destroy_object(WorldObject* object);

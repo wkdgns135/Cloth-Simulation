@@ -19,13 +19,19 @@
 
 namespace
 {
-QString cloth_list_entry_text(const ClothEditorController::ClothViewState& cloth)
+QString object_list_entry_text(const ClothEditorController::ObjectViewState& object)
 {
-	return QString("%1 [%2]  %3p / %4t")
-		.arg(cloth.name)
-		.arg(cloth.solver_label)
-		.arg(cloth.particle_count)
-		.arg(cloth.triangle_count);
+	if (!object.metrics_label.isEmpty())
+	{
+		return QString("%1 [%2]  %3")
+			.arg(object.name)
+			.arg(object.type_label)
+			.arg(object.metrics_label);
+	}
+
+	return QString("%1 [%2]")
+		.arg(object.name)
+		.arg(object.type_label);
 }
 
 ClothSolverKind combo_box_solver_kind(const QComboBox* combo_box)
@@ -107,37 +113,43 @@ void ClothHierarchyDock::build_ui()
 
 	layout->addWidget(create_group);
 
-	cloth_list_widget_ = new QListWidget(contents);
-	cloth_list_widget_->setSelectionMode(QAbstractItemView::SingleSelection);
-	connect(cloth_list_widget_, &QListWidget::itemSelectionChanged, this, [this]() {
-		const QList<QListWidgetItem*> selected_items = cloth_list_widget_->selectedItems();
+	object_list_widget_ = new QListWidget(contents);
+	object_list_widget_->setSelectionMode(QAbstractItemView::SingleSelection);
+	connect(object_list_widget_, &QListWidget::itemSelectionChanged, this, [this]() {
+		const QList<QListWidgetItem*> selected_items = object_list_widget_->selectedItems();
 		if (selected_items.isEmpty())
 		{
+			controller_.set_selected_object(0);
 			return;
 		}
 
-		controller_.set_selected_cloth(selected_items.front()->data(Qt::UserRole).toULongLong());
+		controller_.set_selected_object(selected_items.front()->data(Qt::UserRole).toULongLong());
 	});
 
-	layout->addWidget(cloth_list_widget_, 1);
+	layout->addWidget(object_list_widget_, 1);
 	setWidget(contents);
 }
 
 void ClothHierarchyDock::refresh()
 {
-	QSignalBlocker blocker(cloth_list_widget_);
-	cloth_list_widget_->clear();
+	QSignalBlocker blocker(object_list_widget_);
+	object_list_widget_->clear();
 
 	const ClothEditorController::WorldViewState& snapshot = controller_.snapshot();
 	QListWidgetItem* selected_item = nullptr;
 
-	for (const ClothEditorController::ClothViewState& cloth : snapshot.cloths)
+	for (const ClothEditorController::ObjectViewState& object : snapshot.objects)
 	{
-		QListWidgetItem* item = new QListWidgetItem(cloth_list_entry_text(cloth), cloth_list_widget_);
-		item->setData(Qt::UserRole, QVariant::fromValue<qulonglong>(static_cast<qulonglong>(cloth.id)));
-		item->setToolTip(QString("%1\n%2").arg(cloth.name, cloth.source_label));
+		QListWidgetItem* item = new QListWidgetItem(object_list_entry_text(object), object_list_widget_);
+		item->setData(Qt::UserRole, QVariant::fromValue<qulonglong>(static_cast<qulonglong>(object.id)));
+		QString tooltip = object.name;
+		if (!object.detail_label.isEmpty())
+		{
+			tooltip += "\n" + object.detail_label;
+		}
+		item->setToolTip(tooltip);
 
-		if (cloth.id == snapshot.selected_cloth_id)
+		if (object.id == snapshot.selected_object_id)
 		{
 			selected_item = item;
 		}
@@ -145,7 +157,7 @@ void ClothHierarchyDock::refresh()
 
 	if (selected_item)
 	{
-		cloth_list_widget_->setCurrentItem(selected_item);
+		object_list_widget_->setCurrentItem(selected_item);
 	}
 }
 
