@@ -15,15 +15,16 @@ class QPushButton;
 class QSpinBox;
 class QVBoxLayout;
 class QWidget;
-class ClothEditorController;
+class ClothWorldController;
+class WorldEditorController;
 
-class ClothInspectorDock : public QDockWidget
+class WorldInspectorDock : public QDockWidget
 {
 	Q_OBJECT
 
 public:
-	explicit ClothInspectorDock(ClothEditorController& controller, QWidget* parent = nullptr);
-	~ClothInspectorDock() override = default;
+	explicit WorldInspectorDock(WorldEditorController& controller, ClothWorldController& cloth_world_controller, QWidget* parent = nullptr);
+	~WorldInspectorDock() override = default;
 
 private:
 	struct PropertyEditorBinding
@@ -48,7 +49,8 @@ private:
 	void clear_property_editors();
 	void update_selected_object_property(std::uint64_t source_object_id, const QString& property_id, const PropertyValue& value);
 
-	ClothEditorController& controller_;
+	WorldEditorController& controller_;
+	ClothWorldController& cloth_world_controller_;
 	QLabel* selected_name_label_ = nullptr;
 	QLabel* selected_source_label_ = nullptr;
 	QLabel* selected_solver_label_ = nullptr;

@@ -1,6 +1,9 @@
 #pragma once
 
 #include <array>
+#include <functional>
+#include <optional>
+#include <string>
 #include <type_traits>
 #include <utility>
 #include <vector>
@@ -17,6 +20,25 @@ class InputComponent;
 class World : public Object
 {
 public:
+	struct ChangeEvent
+	{
+		enum class Kind
+		{
+			SnapshotInvalidated,
+			SelectionChanged,
+			ObjectValueChanged,
+		};
+
+		Kind kind = Kind::SnapshotInvalidated;
+		ObjectId object_id = 0;
+		ObjectId selected_object_id = 0;
+		ObjectId source_object_id = 0;
+		std::string value_id;
+		std::optional<PropertyValue> value;
+	};
+
+	using ChangeCallback = std::function<void(const ChangeEvent&)>;
+
 	World();
 	~World() override = default;
 
@@ -48,6 +70,8 @@ public:
 		{
 			result.start();
 		}
+
+		notify_snapshot_invalidated();
 
 		return result;
 	}
@@ -107,6 +131,11 @@ public:
 	Object* find_runtime_object(ObjectId object_id);
 	const Object* find_runtime_object(ObjectId object_id) const;
 	bool set_runtime_object_property(ObjectId object_id, std::string_view property_id, const PropertyValue& value);
+	bool select_object(ObjectId object_id);
+	ObjectId selected_object_id() const { return selected_object_id_; }
+	WorldObject* selected_object() { return find_object(selected_object_id_); }
+	const WorldObject* selected_object() const { return find_object(selected_object_id_); }
+	void set_change_callback(ChangeCallback change_callback);
 
 	bool on_key_pressed(const KeyInputEvent& event);
 	bool on_key_released(const KeyInputEvent& event);
@@ -123,6 +152,9 @@ public:
 	RenderScene build_render_scene() const;
 
 protected:
+	void notify_snapshot_invalidated() const;
+	void notify_selection_changed() const;
+	void notify_object_value_changed(ObjectId object_id, ObjectId source_object_id, std::string value_id, PropertyValue value) const;
 	virtual bool native_on_key_pressed(const KeyInputEvent& event);
 	virtual bool native_on_key_released(const KeyInputEvent& event);
 	virtual bool native_on_pointer_pressed(const PointerInputEvent& event);
@@ -181,6 +213,9 @@ private:
 	int viewport_height_ = 1;
 	bool updating_ = false;
 	std::vector<WorldObject*> pending_destroy_objects_;
+	ObjectId selected_object_id_ = 0;
+	ChangeCallback change_callback_;
 
 	friend class InputComponent;
+	friend class WorldObject;
 };

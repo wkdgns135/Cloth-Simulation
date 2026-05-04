@@ -4,16 +4,15 @@
 #include <QString>
 
 #include <cstdint>
-#include <filesystem>
 #include <optional>
 #include <vector>
 
-#include "cloth/ClothWorld.h"
 #include "engine/core/Property.h"
+#include "engine/core/World.h"
 
 class Engine;
 
-class ClothEditorController : public QObject
+class WorldEditorController : public QObject
 {
 	Q_OBJECT
 
@@ -50,21 +49,13 @@ public:
 		std::uint64_t selected_object_id = 0;
 	};
 
-	explicit ClothEditorController(Engine& engine, QObject* parent = nullptr);
-	~ClothEditorController() override;
+	explicit WorldEditorController(Engine& engine, QObject* parent = nullptr);
+	~WorldEditorController() override;
 
 	const WorldViewState& snapshot() const { return snapshot_; }
 	const ObjectViewState* selected_object() const;
-	const ObjectViewState* selected_cloth() const;
-
-	void create_grid_cloth(int width, int height, float spacing, ClothSolverKind solver_kind);
-	void create_mesh_cloth(const std::filesystem::path& mesh_path, ClothSolverKind solver_kind);
-	void spawn_sphere_from_view();
 	void set_selected_object(std::uint64_t object_id);
 	void update_selected_object_property(std::uint64_t source_object_id, const QString& property_id, const PropertyValue& value);
-	void reset_selected_cloth();
-	void toggle_selected_cloth_anchors();
-	void delete_selected_cloth();
 
 signals:
 	void snapshot_updated();
@@ -72,11 +63,11 @@ signals:
 
 private:
 	void bind_world_notifications();
-	void handle_world_change(const ClothWorld::ChangeEvent& change);
+	void handle_world_change(const World::ChangeEvent& change);
 	void request_snapshot();
 	void apply_snapshot(WorldViewState snapshot);
 	ObjectViewState* find_object_view(std::uint64_t object_id);
-	bool apply_object_value_change(const ClothWorld::ChangeEvent& change);
+	bool apply_object_value_change(const World::ChangeEvent& change);
 
 	Engine& engine_;
 	WorldViewState snapshot_;

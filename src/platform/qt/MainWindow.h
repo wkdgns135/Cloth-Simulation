@@ -2,9 +2,10 @@
 
 #include <QMainWindow>
 
-class ClothEditorController;
-class ClothHierarchyDock;
-class ClothInspectorDock;
+class ClothWorldController;
+class WorldEditorController;
+class WorldHierarchyDock;
+class WorldInspectorDock;
 class Engine;
 class RenderSystem;
 class ViewportWidget;
@@ -21,7 +22,8 @@ public:
 
 private:
 	ViewportWidget* viewport_widget_ = nullptr;
-	ClothEditorController* cloth_editor_controller_ = nullptr;
-	ClothHierarchyDock* cloth_hierarchy_dock_ = nullptr;
-	ClothInspectorDock* cloth_inspector_dock_ = nullptr;
+	ClothWorldController* cloth_world_controller_ = nullptr;
+	WorldEditorController* world_editor_controller_ = nullptr;
+	WorldHierarchyDock* world_hierarchy_dock_ = nullptr;
+	WorldInspectorDock* world_inspector_dock_ = nullptr;
 };

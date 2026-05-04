@@ -72,9 +72,7 @@ ClothObject& ClothWorld::create_grid_cloth(int width, int height, float spacing,
 	cloth_object.set_display_name(make_default_cloth_name(cloth_object.id(), solver_kind));
 	attach_solver(cloth_object, solver_kind);
 	cloth_object.set_object_world_position(glm::vec3(0.35f * static_cast<float>(existing_cloth_count), 0.0f, 0.0f));
-	selected_object_id_ = cloth_object.id();
-	selected_cloth_id_ = cloth_object.id();
-	notify_snapshot_invalidated();
+	select_object(cloth_object.id());
 	return cloth_object;
 }
 
@@ -83,7 +81,6 @@ PlaneObject& ClothWorld::create_plane_object(const glm::vec3& position, const gl
 	PlaneObject& plane_object = create_object<PlaneObject>();
 	plane_object.set_object_world_position(position);
 	plane_object.set_object_scale(scale);
-	notify_snapshot_invalidated();
 	return plane_object;
 }
 
@@ -91,7 +88,6 @@ SphereObject& ClothWorld::create_sphere_object(float radius, const glm::vec3& po
 {
 	SphereObject& sphere_object = create_object<SphereObject>(radius);
 	sphere_object.set_object_world_position(position);
-	notify_snapshot_invalidated();
 	return sphere_object;
 }
 
@@ -108,7 +104,6 @@ void ClothWorld::spawn_sphere_projectile()
 	SphereObject& sphere_object = create_object<SphereObject>(kSpawnSphereRadius);
 	sphere_object.set_object_world_position(spawn_position);
 	sphere_object.configure_projectile(forward * kSpawnSphereSpeed, kSpawnSphereMaxTravelDistance);
-	notify_snapshot_invalidated();
 }
 
 ClothObject& ClothWorld::create_mesh_cloth(const std::filesystem::path& mesh_path, ClothSolverKind solver_kind)
@@ -120,9 +115,7 @@ ClothObject& ClothWorld::create_mesh_cloth(const std::filesystem::path& mesh_pat
 	cloth_object.set_display_name(make_default_cloth_name(cloth_object.id(), solver_kind));
 	attach_solver(cloth_object, solver_kind);
 	cloth_object.set_object_world_position(glm::vec3(0.35f * static_cast<float>(existing_cloth_count), 0.0f, 0.0f));
-	selected_object_id_ = cloth_object.id();
-	selected_cloth_id_ = cloth_object.id();
-	notify_snapshot_invalidated();
+	select_object(cloth_object.id());
 	return cloth_object;
 }
 
@@ -140,63 +133,7 @@ bool ClothWorld::destroy_cloth(ClothId cloth_id)
 		return false;
 	}
 
-	if (selected_cloth_id_ == cloth_id)
-	{
-		selected_object_id_ = 0;
-		selected_cloth_id_ = 0;
-
-		for (const ClothObject* remaining_cloth : get_objects<ClothObject>())
-		{
-			selected_object_id_ = remaining_cloth->id();
-			selected_cloth_id_ = remaining_cloth->id();
-			break;
-		}
-	}
-
-	notify_snapshot_invalidated();
 	return true;
-}
-
-bool ClothWorld::select_object(ObjectId object_id)
-{
-	if (object_id == 0)
-	{
-		if (selected_object_id_ == 0)
-		{
-			return true;
-		}
-
-		selected_object_id_ = 0;
-		selected_cloth_id_ = 0;
-		notify_selection_changed();
-		return true;
-	}
-
-	WorldObject* object = find_object(object_id);
-	if (!object)
-	{
-		return false;
-	}
-
-	if (selected_object_id_ == object_id)
-	{
-		return true;
-	}
-
-	selected_object_id_ = object_id;
-	selected_cloth_id_ = 0;
-	if (dynamic_cast<ClothObject*>(object))
-	{
-		selected_cloth_id_ = object_id;
-	}
-
-	notify_selection_changed();
-	return true;
-}
-
-bool ClothWorld::select_cloth(ClothId cloth_id)
-{
-	return select_object(cloth_id);
 }
 
 bool ClothWorld::reset_cloth(ClothId cloth_id)
@@ -223,9 +160,28 @@ bool ClothWorld::toggle_cloth_anchors(ClothId cloth_id)
 	return true;
 }
 
-void ClothWorld::set_change_callback(ChangeCallback change_callback)
+bool ClothWorld::reset_selected_cloth()
 {
-	change_callback_ = std::move(change_callback);
+	const ClothId cloth_id = selected_cloth_id();
+	return cloth_id != 0 && reset_cloth(cloth_id);
+}
+
+bool ClothWorld::toggle_selected_cloth_anchors()
+{
+	const ClothId cloth_id = selected_cloth_id();
+	return cloth_id != 0 && toggle_cloth_anchors(cloth_id);
+}
+
+bool ClothWorld::delete_selected_cloth()
+{
+	const ClothId cloth_id = selected_cloth_id();
+	return cloth_id != 0 && destroy_cloth(cloth_id);
+}
+
+ClothId ClothWorld::selected_cloth_id() const
+{
+	const ClothObject* selected_cloth = find_object<ClothObject>(selected_object_id());
+	return selected_cloth ? selected_cloth->id() : 0;
 }
 
 ClothObject* ClothWorld::find_cloth(ClothId cloth_id)
@@ -261,61 +217,4 @@ void ClothWorld::attach_solver(ClothObject& cloth_object, ClothSolverKind solver
 		cloth_object.add_component<PBDClothSimulationComponent>(cloth_object.cloth());
 		return;
 	}
-}
-
-void ClothWorld::notify_snapshot_invalidated() const
-{
-	if (change_callback_)
-	{
-		change_callback_(ChangeEvent{ ChangeEvent::Kind::SnapshotInvalidated });
-	}
-}
-
-void ClothWorld::notify_selection_changed() const
-{
-	if (change_callback_)
-	{
-		ChangeEvent event;
-		event.kind = ChangeEvent::Kind::SelectionChanged;
-		event.selected_object_id = selected_object_id_;
-		change_callback_(event);
-	}
-}
-
-void ClothWorld::notify_object_value_changed(
-	ObjectId object_id,
-	ObjectId source_object_id,
-	std::string value_id,
-	PropertyValue value) const
-{
-	if (change_callback_)
-	{
-		ChangeEvent event;
-		event.kind = ChangeEvent::Kind::ObjectValueChanged;
-		event.object_id = object_id;
-		event.selected_object_id = selected_object_id_;
-		event.source_object_id = source_object_id;
-		event.value_id = std::move(value_id);
-		event.value = std::move(value);
-		change_callback_(event);
-	}
-}
-
-bool ClothWorld::on_world_object_clicked(WorldObject& object, const ClickInputEvent& event)
-{
-	static_cast<void>(event);
-	return select_object(object.id());
-}
-
-void ClothWorld::on_world_object_property_changed(const WorldObject& object, const PropertyBase& property)
-{
-	notify_object_value_changed(object.id(), object.id(), std::string(property.id()), property.value());
-}
-
-void ClothWorld::on_component_property_changed(
-	const WorldObject& owner,
-	const Component& component,
-	const PropertyBase& property)
-{
-	notify_object_value_changed(owner.id(), component.id(), std::string(property.id()), property.value());
 }

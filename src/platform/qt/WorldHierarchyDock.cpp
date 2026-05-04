@@ -1,6 +1,4 @@
-#include "platform/qt/ClothHierarchyDock.h"
-
-#include <filesystem>
+#include "platform/qt/WorldHierarchyDock.h"
 
 #include <QComboBox>
 #include <QDoubleSpinBox>
@@ -15,11 +13,12 @@
 #include <QVariant>
 #include <QVBoxLayout>
 
-#include "platform/qt/ClothEditorController.h"
+#include "platform/qt/ClothWorldController.h"
+#include "platform/qt/WorldEditorController.h"
 
 namespace
 {
-QString object_list_entry_text(const ClothEditorController::ObjectViewState& object)
+QString object_list_entry_text(const WorldEditorController::ObjectViewState& object)
 {
 	if (!object.metrics_label.isEmpty())
 	{
@@ -48,21 +47,22 @@ void configure_double_spin_box(QDoubleSpinBox* spin_box, double minimum, double 
 }
 }
 
-ClothHierarchyDock::ClothHierarchyDock(ClothEditorController& controller, QWidget* parent)
+WorldHierarchyDock::WorldHierarchyDock(WorldEditorController& controller, ClothWorldController& cloth_world_controller, QWidget* parent)
 	: QDockWidget("Hierarchy", parent)
 	, controller_(controller)
+	, cloth_world_controller_(cloth_world_controller)
 {
 	setAllowedAreas(Qt::LeftDockWidgetArea | Qt::RightDockWidgetArea);
 	build_ui();
 
-	connect(&controller_, &ClothEditorController::snapshot_updated, this, [this]() {
+	connect(&controller_, &WorldEditorController::snapshot_updated, this, [this]() {
 		refresh();
 	});
 
 	refresh();
 }
 
-void ClothHierarchyDock::build_ui()
+void WorldHierarchyDock::build_ui()
 {
 	QWidget* contents = new QWidget(this);
 	QVBoxLayout* layout = new QVBoxLayout(contents);
@@ -102,13 +102,13 @@ void ClothHierarchyDock::build_ui()
 	create_layout->addRow(spawn_sphere_button);
 
 	connect(add_grid_button, &QPushButton::clicked, this, [this]() {
-		create_grid_cloth();
+		create_grid_object();
 	});
 	connect(add_mesh_button, &QPushButton::clicked, this, [this]() {
-		create_mesh_cloth();
+		create_mesh_object();
 	});
 	connect(spawn_sphere_button, &QPushButton::clicked, this, [this]() {
-		spawn_sphere();
+		spawn_sphere_object();
 	});
 
 	layout->addWidget(create_group);
@@ -130,15 +130,15 @@ void ClothHierarchyDock::build_ui()
 	setWidget(contents);
 }
 
-void ClothHierarchyDock::refresh()
+void WorldHierarchyDock::refresh()
 {
 	QSignalBlocker blocker(object_list_widget_);
 	object_list_widget_->clear();
 
-	const ClothEditorController::WorldViewState& snapshot = controller_.snapshot();
+	const WorldEditorController::WorldViewState& snapshot = controller_.snapshot();
 	QListWidgetItem* selected_item = nullptr;
 
-	for (const ClothEditorController::ObjectViewState& object : snapshot.objects)
+	for (const WorldEditorController::ObjectViewState& object : snapshot.objects)
 	{
 		QListWidgetItem* item = new QListWidgetItem(object_list_entry_text(object), object_list_widget_);
 		item->setData(Qt::UserRole, QVariant::fromValue<qulonglong>(static_cast<qulonglong>(object.id)));
@@ -161,16 +161,16 @@ void ClothHierarchyDock::refresh()
 	}
 }
 
-void ClothHierarchyDock::create_grid_cloth()
+void WorldHierarchyDock::create_grid_object()
 {
-	controller_.create_grid_cloth(
+	cloth_world_controller_.create_grid_cloth(
 		new_grid_width_spin_->value(),
 		new_grid_height_spin_->value(),
 		static_cast<float>(new_grid_spacing_spin_->value()),
 		combo_box_solver_kind(new_solver_combo_));
 }
 
-void ClothHierarchyDock::create_mesh_cloth()
+void WorldHierarchyDock::create_mesh_object()
 {
 	const QString file_path = QFileDialog::getOpenFileName(
 		this,
@@ -182,10 +182,10 @@ void ClothHierarchyDock::create_mesh_cloth()
 		return;
 	}
 
-	controller_.create_mesh_cloth(file_path.toStdString(), combo_box_solver_kind(new_solver_combo_));
+	cloth_world_controller_.create_mesh_cloth(file_path.toStdString(), combo_box_solver_kind(new_solver_combo_));
 }
 
-void ClothHierarchyDock::spawn_sphere()
+void WorldHierarchyDock::spawn_sphere_object()
 {
-	controller_.spawn_sphere_from_view();
+	cloth_world_controller_.spawn_sphere_from_view();
 }

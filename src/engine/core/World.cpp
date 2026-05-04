@@ -370,6 +370,40 @@ bool World::set_runtime_object_property(ObjectId object_id, std::string_view pro
 	return false;
 }
 
+bool World::select_object(ObjectId object_id)
+{
+	if (object_id == 0)
+	{
+		if (selected_object_id_ == 0)
+		{
+			return true;
+		}
+
+		selected_object_id_ = 0;
+		notify_selection_changed();
+		return true;
+	}
+
+	if (!find_object(object_id))
+	{
+		return false;
+	}
+
+	if (selected_object_id_ == object_id)
+	{
+		return true;
+	}
+
+	selected_object_id_ = object_id;
+	notify_selection_changed();
+	return true;
+}
+
+void World::set_change_callback(ChangeCallback change_callback)
+{
+	change_callback_ = std::move(change_callback);
+}
+
 void World::notify_world_object_property_changed(const WorldObject& object, const PropertyBase& property)
 {
 	on_world_object_property_changed(object, property);
@@ -400,6 +434,44 @@ RenderScene World::build_render_scene() const
 	}
 
 	return scene;
+}
+
+void World::notify_snapshot_invalidated() const
+{
+	if (change_callback_)
+	{
+		change_callback_(ChangeEvent{ ChangeEvent::Kind::SnapshotInvalidated });
+	}
+}
+
+void World::notify_selection_changed() const
+{
+	if (change_callback_)
+	{
+		ChangeEvent event;
+		event.kind = ChangeEvent::Kind::SelectionChanged;
+		event.selected_object_id = selected_object_id_;
+		change_callback_(event);
+	}
+}
+
+void World::notify_object_value_changed(
+	ObjectId object_id,
+	ObjectId source_object_id,
+	std::string value_id,
+	PropertyValue value) const
+{
+	if (change_callback_)
+	{
+		ChangeEvent event;
+		event.kind = ChangeEvent::Kind::ObjectValueChanged;
+		event.object_id = object_id;
+		event.selected_object_id = selected_object_id_;
+		event.source_object_id = source_object_id;
+		event.value_id = std::move(value_id);
+		event.value = std::move(value);
+		change_callback_(event);
+	}
 }
 
 InputSubscriptionHandle World::subscribe_key_pressed(InputKey key, InputComponent::KeyHandler handler)
@@ -640,22 +712,18 @@ bool World::native_on_wheel_scrolled(const WheelInputEvent& event)
 
 bool World::on_world_object_clicked(WorldObject& object, const ClickInputEvent& event)
 {
-	static_cast<void>(object);
 	static_cast<void>(event);
-	return false;
+	return select_object(object.id());
 }
 
 void World::on_world_object_property_changed(const WorldObject& object, const PropertyBase& property)
 {
-	static_cast<void>(object);
-	static_cast<void>(property);
+	notify_object_value_changed(object.id(), object.id(), std::string(property.id()), property.value());
 }
 
 void World::on_component_property_changed(const WorldObject& owner, const Component& component, const PropertyBase& property)
 {
-	static_cast<void>(owner);
-	static_cast<void>(component);
-	static_cast<void>(property);
+	notify_object_value_changed(owner.id(), component.id(), std::string(property.id()), property.value());
 }
 
 bool World::destroy_object(WorldObject* object)
@@ -707,8 +775,26 @@ bool World::destroy_object_immediate(WorldObject* object)
 		hovered_object_ = nullptr;
 	}
 
+	const bool was_selected = selected_object_id_ == object->id();
+	if (was_selected)
+	{
+		selected_object_id_ = 0;
+	}
+
 	existing_object->destroy();
-	return world_objects_.erase(existing_object);
+	const bool erased = world_objects_.erase(existing_object);
+	if (!erased)
+	{
+		return false;
+	}
+
+	if (was_selected)
+	{
+		notify_selection_changed();
+	}
+
+	notify_snapshot_invalidated();
+	return true;
 }
 
 void World::flush_destroy_requests()

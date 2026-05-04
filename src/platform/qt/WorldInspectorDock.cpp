@@ -1,4 +1,4 @@
-#include "platform/qt/ClothInspectorDock.h"
+#include "platform/qt/WorldInspectorDock.h"
 
 #include <cmath>
 
@@ -15,7 +15,8 @@
 #include <QSpinBox>
 #include <QVBoxLayout>
 
-#include "platform/qt/ClothEditorController.h"
+#include "platform/qt/ClothWorldController.h"
+#include "platform/qt/WorldEditorController.h"
 
 namespace
 {
@@ -27,12 +28,12 @@ void configure_double_spin_box(QDoubleSpinBox* spin_box, double minimum, double 
 	spin_box->setKeyboardTracking(false);
 }
 
-const ClothEditorController::PropertyViewState* find_selected_property(
-	const ClothEditorController::ObjectViewState& object,
+const WorldEditorController::PropertyViewState* find_selected_property(
+	const WorldEditorController::ObjectViewState& object,
 	std::uint64_t source_object_id,
 	const QString& property_id)
 {
-	for (const ClothEditorController::PropertyViewState& property : object.properties)
+	for (const WorldEditorController::PropertyViewState& property : object.properties)
 	{
 		if (property.source_object_id == source_object_id && property.id == property_id)
 		{
@@ -43,7 +44,7 @@ const ClothEditorController::PropertyViewState* find_selected_property(
 	return nullptr;
 }
 
-QString property_section_title(const ClothEditorController::PropertyViewState& property)
+QString property_section_title(const WorldEditorController::PropertyViewState& property)
 {
 	if (property.source_label.isEmpty())
 	{
@@ -86,17 +87,18 @@ int decimals_for_step(const std::optional<PropertyValue>& step)
 }
 }
 
-ClothInspectorDock::ClothInspectorDock(ClothEditorController& controller, QWidget* parent)
+WorldInspectorDock::WorldInspectorDock(WorldEditorController& controller, ClothWorldController& cloth_world_controller, QWidget* parent)
 	: QDockWidget("Inspector", parent)
 	, controller_(controller)
+	, cloth_world_controller_(cloth_world_controller)
 {
 	setAllowedAreas(Qt::LeftDockWidgetArea | Qt::RightDockWidgetArea);
 	build_ui();
 
-	connect(&controller_, &ClothEditorController::snapshot_updated, this, [this]() {
+	connect(&controller_, &WorldEditorController::snapshot_updated, this, [this]() {
 		refresh();
 	});
-	connect(&controller_, &ClothEditorController::selected_object_value_updated, this, [this](const QString& value_id) {
+	connect(&controller_, &WorldEditorController::selected_object_value_updated, this, [this](const QString& value_id) {
 		static_cast<void>(value_id);
 		refresh_property_values();
 	});
@@ -104,7 +106,7 @@ ClothInspectorDock::ClothInspectorDock(ClothEditorController& controller, QWidge
 	refresh();
 }
 
-void ClothInspectorDock::build_ui()
+void WorldInspectorDock::build_ui()
 {
 	inspector_panel_ = new QWidget(this);
 	QVBoxLayout* layout = new QVBoxLayout(inspector_panel_);
@@ -132,26 +134,26 @@ void ClothInspectorDock::build_ui()
 	QVBoxLayout* actions_layout = new QVBoxLayout(actions_group);
 	QPushButton* reset_cloth_button = new QPushButton("Reset", actions_group);
 	QPushButton* delete_cloth_button = new QPushButton("Delete", actions_group);
-	reset_cloth_button->setObjectName("resetClothButton");
-	delete_cloth_button->setObjectName("deleteClothButton");
+	reset_cloth_button->setObjectName("resetSelectedClothButton");
+	delete_cloth_button->setObjectName("deleteSelectedClothButton");
 	actions_layout->addWidget(reset_cloth_button);
 	actions_layout->addWidget(delete_cloth_button);
 	layout->addWidget(actions_group);
 	layout->addStretch(1);
 
 	connect(reset_cloth_button, &QPushButton::clicked, this, [this]() {
-		controller_.reset_selected_cloth();
+		cloth_world_controller_.reset_selected_cloth();
 	});
 	connect(delete_cloth_button, &QPushButton::clicked, this, [this]() {
-		controller_.delete_selected_cloth();
+		cloth_world_controller_.delete_selected_cloth();
 	});
 
 	setWidget(inspector_panel_);
 }
 
-void ClothInspectorDock::refresh()
+void WorldInspectorDock::refresh()
 {
-	const ClothEditorController::ObjectViewState* object = controller_.selected_object();
+	const WorldEditorController::ObjectViewState* object = controller_.selected_object();
 	inspector_panel_->setEnabled(object != nullptr);
 
 	if (!object)
@@ -169,11 +171,11 @@ void ClothInspectorDock::refresh()
 	selected_solver_label_->setText(object->detail_label.isEmpty() ? "-" : object->detail_label);
 	selected_topology_label_->setText(object->metrics_label.isEmpty() ? "-" : object->metrics_label);
 
-	if (QPushButton* reset_button = inspector_panel_->findChild<QPushButton*>("resetClothButton"))
+	if (QPushButton* reset_button = inspector_panel_->findChild<QPushButton*>("resetSelectedClothButton"))
 	{
 		reset_button->setEnabled(object->is_cloth);
 	}
-	if (QPushButton* delete_button = inspector_panel_->findChild<QPushButton*>("deleteClothButton"))
+	if (QPushButton* delete_button = inspector_panel_->findChild<QPushButton*>("deleteSelectedClothButton"))
 	{
 		delete_button->setEnabled(object->is_cloth);
 	}
@@ -181,9 +183,9 @@ void ClothInspectorDock::refresh()
 	rebuild_property_editors();
 }
 
-void ClothInspectorDock::refresh_property_values()
+void WorldInspectorDock::refresh_property_values()
 {
-	const ClothEditorController::ObjectViewState* object = controller_.selected_object();
+	const WorldEditorController::ObjectViewState* object = controller_.selected_object();
 	if (!object)
 	{
 		return;
@@ -191,7 +193,7 @@ void ClothInspectorDock::refresh_property_values()
 
 	for (const PropertyEditorBinding& binding : property_editors_)
 	{
-		const ClothEditorController::PropertyViewState* property =
+		const WorldEditorController::PropertyViewState* property =
 			find_selected_property(*object, binding.source_object_id, binding.property_id);
 		if (!property)
 		{
@@ -269,11 +271,11 @@ void ClothInspectorDock::refresh_property_values()
 	}
 }
 
-void ClothInspectorDock::rebuild_property_editors()
+void WorldInspectorDock::rebuild_property_editors()
 {
 	clear_property_editors();
 
-	const ClothEditorController::ObjectViewState* object = controller_.selected_object();
+	const WorldEditorController::ObjectViewState* object = controller_.selected_object();
 	if (!object)
 	{
 		return;
@@ -282,7 +284,7 @@ void ClothInspectorDock::rebuild_property_editors()
 	QString current_section_title;
 	QFormLayout* current_form_layout = nullptr;
 
-	for (const ClothEditorController::PropertyViewState& property : object->properties)
+	for (const WorldEditorController::PropertyViewState& property : object->properties)
 	{
 		const QString section_title = property_section_title(property);
 		if (!current_form_layout || section_title != current_section_title)
@@ -408,7 +410,7 @@ void ClothInspectorDock::rebuild_property_editors()
 	refresh_property_values();
 }
 
-void ClothInspectorDock::clear_property_editors()
+void WorldInspectorDock::clear_property_editors()
 {
 	property_editors_.clear();
 
@@ -428,7 +430,7 @@ void ClothInspectorDock::clear_property_editors()
 	}
 }
 
-void ClothInspectorDock::update_selected_object_property(
+void WorldInspectorDock::update_selected_object_property(
 	std::uint64_t source_object_id,
 	const QString& property_id,
 	const PropertyValue& value)

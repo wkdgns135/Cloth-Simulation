@@ -104,6 +104,11 @@ void WorldObject::add_component(std::unique_ptr<Component> component)
 	{
 		result.start();
 	}
+
+	if (world_)
+	{
+		world_->notify_snapshot_invalidated();
+	}
 }
 
 void WorldObject::awake()
