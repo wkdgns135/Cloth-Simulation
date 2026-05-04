@@ -178,43 +178,28 @@ class Property : public PropertyBase
 {
 public:
 	using ValueType = T;
-	using Normalizer = std::function<T(T)>;
 	using ChangeHandler = std::function<void(const T&)>;
 
-	Property(Object& owner, PropertyConfig<T> config, T initial_value, Normalizer normalizer = {}, ChangeHandler on_changed = {})
+	Property(Object& owner, PropertyConfig<T> config, T initial_value, ChangeHandler on_changed = {})
 		: PropertyBase(owner, make_descriptor(config))
-		, value_(normalize_value(std::move(initial_value), normalizer))
-		, normalizer_(std::move(normalizer))
+		, value_(std::move(initial_value))
 		, on_changed_(std::move(on_changed))
 	{
 	}
 
-	const T& get() const { return value_; }
-
-	void set(T value)
+	PropertyGetterResult<T> operator()() const
 	{
-		value_ = normalize_value(std::move(value), normalizer_);
+		return value_;
+	}
+
+	void operator()(T value)
+	{
+		value_ = std::move(value);
 		if (on_changed_)
 		{
 			on_changed_(value_);
 		}
 		notify_value_changed();
-	}
-
-	PropertyGetterResult<T> operator()() const
-	{
-		return get();
-	}
-
-	void operator()(T value)
-	{
-		set(std::move(value));
-	}
-
-	Property& operator=(T value)
-	{
-		set(std::move(value));
-		return *this;
 	}
 
 	PropertyValue value() const override
@@ -235,7 +220,7 @@ public:
 			return false;
 		}
 
-		set(std::move(typed_value));
+		operator()(std::move(typed_value));
 		return true;
 	}
 
@@ -265,18 +250,7 @@ private:
 		return descriptor;
 	}
 
-	static T normalize_value(T value, const Normalizer& normalizer)
-	{
-		if (normalizer)
-		{
-			return normalizer(std::move(value));
-		}
-
-		return value;
-	}
-
 	T value_;
-	Normalizer normalizer_;
 	ChangeHandler on_changed_;
 };
 
@@ -297,20 +271,4 @@ private:
 		*this, \
 		make_ranged_property_config<Type>(#Name, Label, Group, MinValue, MaxValue, StepValue), \
 		InitialValue }; \
-	public:
-
-#define PROPERTY_NORMALIZED(Type, Name, Group, Label, InitialValue, NormalizerExpr) \
-	PROPERTY_ACCESSORS(Type, Name) \
-	private: \
-	Property<Type> Name##_{ *this, make_property_config<Type>(#Name, Label, Group), InitialValue, NormalizerExpr }; \
-	public:
-
-#define PROPERTY_RANGE_NORMALIZED(Type, Name, Group, Label, InitialValue, MinValue, MaxValue, StepValue, NormalizerExpr) \
-	PROPERTY_ACCESSORS(Type, Name) \
-	private: \
-	Property<Type> Name##_{ \
-		*this, \
-		make_ranged_property_config<Type>(#Name, Label, Group, MinValue, MaxValue, StepValue), \
-		InitialValue, \
-		NormalizerExpr }; \
 	public:

@@ -64,6 +64,5 @@ private:
 		*this,
 		make_property_config<bool>("anchors_enabled", "Anchors Enabled", "Cloth"),
 		true,
-		{},
 		[this](const bool& enabled) { apply_anchor_state(enabled); } };
 };

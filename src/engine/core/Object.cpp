@@ -34,16 +34,6 @@ void Object::register_property(PropertyBase& property)
 	properties_.push_back(&property);
 }
 
-std::optional<PropertyValue> Object::get_property(std::string_view property_id) const
-{
-	if (const PropertyBase* property = find_property(property_id))
-	{
-		return property->value();
-	}
-
-	return std::nullopt;
-}
-
 bool Object::set_property(std::string_view property_id, const PropertyValue& value)
 {
 	if (PropertyBase* property = find_property(property_id))
@@ -57,19 +47,6 @@ bool Object::set_property(std::string_view property_id, const PropertyValue& val
 PropertyBase* Object::find_property(std::string_view property_id)
 {
 	for (PropertyBase* property : properties_)
-	{
-		if (property && property->id() == property_id)
-		{
-			return property;
-		}
-	}
-
-	return nullptr;
-}
-
-const PropertyBase* Object::find_property(std::string_view property_id) const
-{
-	for (const PropertyBase* property : properties_)
 	{
 		if (property && property->id() == property_id)
 		{

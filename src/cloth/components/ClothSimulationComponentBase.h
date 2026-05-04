@@ -1,6 +1,5 @@
 #pragma once
 
-#include <algorithm>
 #include <array>
 #include <cstdint>
 #include <vector>
@@ -61,10 +60,10 @@ public:
 	const glm::vec3& external_acceleration() const { return external_acceleration_; }
 
 	PROPERTY(glm::vec3, gravity, "Simulation", "Gravity", glm::vec3(0.0f, -9.8f, 0.0f))
-	PROPERTY_RANGE_NORMALIZED(float, damping, "Simulation", "Damping", 0.99f, 0.0f, 1.0f, 0.01f, [](float value) { return std::clamp(value, 0.0f, 1.0f); })
-	PROPERTY_RANGE_NORMALIZED(int, constraint_iterations, "Simulation", "Constraint Iterations", 20, 1, 128, 1, [](int value) { return std::max(0, value); })
+	PROPERTY_RANGE(float, damping, "Simulation", "Damping", 0.99f, 0.0f, 1.0f, 0.01f)
+	PROPERTY_RANGE(int, constraint_iterations, "Simulation", "Constraint Iterations", 20, 1, 128, 1)
 	PROPERTY(bool, collision_enabled, "Simulation", "Collision Enabled", true)
-	PROPERTY_RANGE_NORMALIZED(float, collision_margin, "Simulation", "Collision Margin", 0.01f, 0.0f, 1.0f, 0.001f, [](float value) { return std::max(0.0f, value); })
+	PROPERTY_RANGE(float, collision_margin, "Simulation", "Collision Margin", 0.01f, 0.0f, 1.0f, 0.001f)
 	
 protected:
 	Cloth& cloth() { return cloth_; }

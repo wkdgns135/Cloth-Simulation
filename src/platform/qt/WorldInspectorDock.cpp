@@ -74,16 +74,24 @@ int property_int_or(const std::optional<PropertyValue>& value, int fallback)
 int decimals_for_step(const std::optional<PropertyValue>& step)
 {
 	const double step_value = property_double_or(step, 0.01);
-	double scaled_step = std::abs(step_value);
-	int decimals = 0;
-
-	while (decimals < 6 && scaled_step > 0.0 && std::abs(std::round(scaled_step) - scaled_step) > 0.000001)
+	if (step_value <= 0.0)
 	{
-		scaled_step *= 10.0;
-		++decimals;
+		return 2;
 	}
 
-	return std::max(decimals, 0);
+	QString step_text = QString::number(step_value, 'f', 9);
+	while (step_text.endsWith('0'))
+	{
+		step_text.chop(1);
+	}
+
+	const int decimal_point_index = step_text.indexOf('.');
+	if (decimal_point_index < 0)
+	{
+		return 0;
+	}
+
+	return std::max(static_cast<int>(step_text.size()) - decimal_point_index - 1, 0);
 }
 }
 

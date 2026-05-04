@@ -10,8 +10,8 @@ public:
 	explicit PBDClothSimulationComponent(Cloth& cloth);
 
 	void update_simulation(float delta_time) override;
-	PROPERTY_RANGE_NORMALIZED(float, stretch_stiffness, "Solver", "Stretch Stiffness", 1.0f, 0.0f, 1.0f, 0.01f, [](float value) { return std::clamp(value, 0.0f, 1.0f); })
-	PROPERTY_RANGE_NORMALIZED(float, bend_stiffness, "Solver", "Bend Stiffness", 0.15f, 0.0f, 1.0f, 0.01f, [](float value) { return std::clamp(value, 0.0f, 1.0f); })
+	PROPERTY_RANGE(float, stretch_stiffness, "Solver", "Stretch Stiffness", 1.0f, 0.0f, 1.0f, 0.01f)
+	PROPERTY_RANGE(float, bend_stiffness, "Solver", "Bend Stiffness", 0.15f, 0.0f, 1.0f, 0.01f)
 
 private:
 	void solve_distance_constraints(float stiffness_per_iteration);

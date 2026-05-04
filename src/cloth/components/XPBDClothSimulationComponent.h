@@ -13,8 +13,8 @@ public:
 
 	void start() override;
 	void update_simulation(float delta_time) override;
-	PROPERTY_RANGE_NORMALIZED(float, stretch_compliance, "Solver", "Stretch Compliance", 0.000001f, 0.0f, 0.1f, 0.000001f, [](float value) { return std::max(0.0f, value); })
-	PROPERTY_RANGE_NORMALIZED(float, bend_compliance, "Solver", "Bend Compliance", 0.0005f, 0.0f, 0.1f, 0.000001f, [](float value) { return std::max(0.0f, value); })
+	PROPERTY_RANGE(float, stretch_compliance, "Solver", "Stretch Compliance", 0.000001f, 0.0f, 0.1f, 0.000001f)
+	PROPERTY_RANGE(float, bend_compliance, "Solver", "Bend Compliance", 0.0005f, 0.0f, 0.1f, 0.000001f)
 
 private:
 	void sync_constraint_states();
