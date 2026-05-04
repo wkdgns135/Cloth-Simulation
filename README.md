@@ -5,6 +5,7 @@ Real-time cloth simulation built with `C++17`, `Qt6`, and `OpenGL`.
 This project implements both `PBD (Position-Based Dynamics)` and `XPBD (Extended Position-Based Dynamics)` cloth solvers, with a small editor-style UI for creating cloth objects, tweaking parameters, and inspecting the scene at runtime.
 
 ## Preview
+https://github.com/user-attachments/assets/7bde1aa6-8c90-41b1-8148-d1cad6f109d9
 
 ## Highlights
 
