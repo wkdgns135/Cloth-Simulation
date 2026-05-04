@@ -53,6 +53,46 @@ int parse_obj_vertex_index(const std::string& token, std::size_t vertex_count)
 	}
 	return reverse_index;
 }
+	
+void normalize_positions(std::vector<glm::vec3>& positions)
+{
+	if (positions.empty())
+	{
+		return;
+	}
+
+	glm::vec3 min_pos = positions[0];
+	glm::vec3 max_pos = positions[0];
+
+	for (const glm::vec3& position : positions)
+	{
+		min_pos.x = std::min(min_pos.x, position.x);
+		min_pos.y = std::min(min_pos.y, position.y);
+		min_pos.z = std::min(min_pos.z, position.z);
+
+		max_pos.x = std::max(max_pos.x, position.x);
+		max_pos.y = std::max(max_pos.y, position.y);
+		max_pos.z = std::max(max_pos.z, position.z);
+	}
+
+	const glm::vec3 extent = max_pos - min_pos;
+	const float max_extent = std::max({ extent.x, extent.y, extent.z });
+
+	if (max_extent <= 0.0f)
+	{
+		throw std::runtime_error("Mesh has invalid bounds.");
+	}
+
+	const float center_x = (min_pos.x + max_pos.x) * 0.5f;
+	const float center_z = (min_pos.z + max_pos.z) * 0.5f;
+
+	for (glm::vec3& position : positions)
+	{
+		position.x = (position.x - center_x) / max_extent;
+		position.y = (position.y - max_pos.y) / max_extent;
+		position.z = (position.z - center_z) / max_extent;
+	}
+}
 
 Cloth load_obj(const std::filesystem::path& path)
 {
@@ -127,6 +167,8 @@ Cloth load_obj(const std::filesystem::path& path)
 	{
 		throw std::runtime_error("Mesh has no triangle faces: " + path.string());
 	}
+	
+	normalize_positions(positions);
 
 	return Cloth(std::move(positions), std::move(indices));
 }
