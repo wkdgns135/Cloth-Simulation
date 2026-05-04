@@ -26,6 +26,8 @@ set(ENGINE_SOURCES
     src/engine/components/StaticMeshRenderComponent.h
     src/engine/components/StaticMeshRenderComponent.cpp
     src/engine/components/SimulationComponent.h
+    src/engine/components/TransformComponent.h
+    src/engine/components/TransformComponent.cpp
     src/engine/core/WorldObject.h
     src/engine/core/WorldObject.cpp
     src/engine/core/Component.h
@@ -35,7 +37,6 @@ set(ENGINE_SOURCES
     src/engine/core/Object.cpp
     src/engine/core/Property.h
     src/engine/core/Property.cpp
-    src/engine/core/Transform.h
     src/engine/core/World.h
     src/engine/core/World.cpp
     src/engine/render/Renderer.h

@@ -104,6 +104,10 @@ public:
 		return dynamic_cast<const T*>(world_objects_.find(object_id));
 	}
 
+	Object* find_runtime_object(ObjectId object_id);
+	const Object* find_runtime_object(ObjectId object_id) const;
+	bool set_runtime_object_property(ObjectId object_id, std::string_view property_id, const PropertyValue& value);
+
 	bool on_key_pressed(const KeyInputEvent& event);
 	bool on_key_released(const KeyInputEvent& event);
 	bool on_pointer_pressed(const PointerInputEvent& event);

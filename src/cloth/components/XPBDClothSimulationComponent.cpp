@@ -8,6 +8,7 @@
 XPBDClothSimulationComponent::XPBDClothSimulationComponent(Cloth& cloth)
 	: ClothSimulationComponentBase(cloth)
 {
+	set_display_name("XPBD Solver");
 }
 
 void XPBDClothSimulationComponent::start()
@@ -79,7 +80,7 @@ void XPBDClothSimulationComponent::solve_distance_constraint(std::size_t constra
 	Particle& particle_a = particles[constraint.particle_a];
 	Particle& particle_b = particles[constraint.particle_b];
 
-	const float alpha_tilde = stretch_compliance_ / (delta_time * delta_time);
+	const float alpha_tilde = stretch_compliance() / (delta_time * delta_time);
 	const float denominator = evaluation.denominator + alpha_tilde;
 	if (denominator <= 0.0f)
 	{
@@ -119,7 +120,7 @@ void XPBDClothSimulationComponent::solve_bending_constraint(std::size_t constrai
 	Particle& particle_3 = particles[constraint.particle_3];
 	Particle& particle_4 = particles[constraint.particle_4];
 
-	const float alpha_tilde = bend_compliance_ / (delta_time * delta_time);
+	const float alpha_tilde = bend_compliance() / (delta_time * delta_time);
 	const float denominator = evaluation.denominator + alpha_tilde;
 	if (denominator <= 0.0f)
 	{

@@ -46,7 +46,6 @@ public:
 	bool destroy_cloth(ClothId cloth_id);
 	bool select_cloth(ClothId cloth_id);
 	bool set_cloth_property(ClothId cloth_id, ObjectId source_object_id, std::string property_id, const PropertyValue& value);
-	bool set_cloth_position(ClothId cloth_id, const glm::vec3& position);
 	bool reset_cloth(ClothId cloth_id);
 	bool toggle_cloth_anchors(ClothId cloth_id);
 	void set_change_callback(ChangeCallback change_callback);
@@ -61,6 +60,7 @@ private:
 	void notify_snapshot_invalidated() const;
 	void notify_selection_changed() const;
 	void notify_cloth_value_changed(ClothId cloth_id, ObjectId source_object_id, std::string value_id, PropertyValue value) const;
+	void on_world_object_property_changed(const WorldObject& object, const PropertyBase& property) override;
 	void on_component_property_changed(const WorldObject& owner, const Component& component, const PropertyBase& property) override;
 
 	ClothId selected_cloth_id_ = 0;

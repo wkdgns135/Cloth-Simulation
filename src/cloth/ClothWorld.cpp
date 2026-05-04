@@ -6,7 +6,6 @@
 #include <glm/geometric.hpp>
 
 #include "cloth/components/ClothCameraInputComponent.h"
-#include "cloth/components/ClothSimulationComponentBase.h"
 #include "cloth/components/PBDClothSimulationComponent.h"
 #include "cloth/components/XPBDClothSimulationComponent.h"
 #include "engine/objects/CameraObject.h"
@@ -30,7 +29,7 @@ float compute_default_floor_height(const ClothObject& cloth_object)
 		return -1.0f;
 	}
 
-	const glm::mat4 object_transform = cloth_object.transform().matrix();
+	const glm::mat4 object_transform = cloth_object.get_object_transform_matrix();
 	float min_y = std::numeric_limits<float>::max();
 
 	for (const Particle& particle : particles)
@@ -45,21 +44,21 @@ float compute_default_floor_height(const ClothObject& cloth_object)
 
 ClothWorld::ClothWorld()
 {
-	main_camera_object_->transform().position = glm::vec3(0.0f, 0.0f, 2.6f);
-	main_camera_object_->transform().look_at(glm::vec3(0.0f, 0.0f, 0.0f));
-	main_camera_object_->fov_y_degrees = 45.0f;
+	main_camera_object_->set_object_world_position(glm::vec3(0.0f, 0.0f, 2.6f));
+	main_camera_object_->look_at_world_position(glm::vec3(0.0f, 0.0f, 0.0f));
+	main_camera_object_->set_fov_y_degrees(45.0f);
 	main_camera_object_->add_component<ClothCameraInputComponent>();
 
-	main_directional_light_object_->transform().set_forward(glm::normalize(glm::vec3(-0.75f, 0.65f, 0.45f)));
-	main_directional_light_object_->ambient_strength = 0.16f;
-	main_directional_light_object_->diffuse_strength = 1.15f;
+	main_directional_light_object_->set_object_forward_direction(glm::normalize(glm::vec3(-0.75f, 0.65f, 0.45f)));
+	main_directional_light_object_->set_ambient_strength(0.16f);
+	main_directional_light_object_->set_diffuse_strength(1.15f);
 
 	ClothObject& initial_cloth = create_mesh_cloth("asset/test_cloth_patch.obj", ClothSolverKind::PBD);
-	initial_cloth.transform().position = glm::vec3(0.0f, 0.0f, 0.0f);
+	initial_cloth.set_object_world_position(glm::vec3(0.0f, 0.0f, 0.0f));
 
 	PlaneObject& floor_object = create_object<PlaneObject>();
-	floor_object.transform().position = glm::vec3(0.0f, compute_default_floor_height(initial_cloth), 0.0f);
-	floor_object.transform().scale = glm::vec3(8.0f, 1.0f, 8.0f);
+	floor_object.set_object_world_position(glm::vec3(0.0f, compute_default_floor_height(initial_cloth), 0.0f));
+	floor_object.set_object_scale(glm::vec3(8.0f, 1.0f, 8.0f));
 }
 
 ClothObject& ClothWorld::create_grid_cloth(int width, int height, float spacing, ClothSolverKind solver_kind)
@@ -72,7 +71,7 @@ ClothObject& ClothWorld::create_grid_cloth(int width, int height, float spacing,
 		spacing);
 	cloth_object.set_display_name(make_default_cloth_name(cloth_object.id(), solver_kind));
 	attach_solver(cloth_object, solver_kind);
-	cloth_object.transform().position = glm::vec3(0.35f * static_cast<float>(existing_cloth_count), 0.0f, 0.0f);
+	cloth_object.set_object_world_position(glm::vec3(0.35f * static_cast<float>(existing_cloth_count), 0.0f, 0.0f));
 	selected_cloth_id_ = cloth_object.id();
 	notify_snapshot_invalidated();
 	return cloth_object;
@@ -81,8 +80,8 @@ ClothObject& ClothWorld::create_grid_cloth(int width, int height, float spacing,
 PlaneObject& ClothWorld::create_plane_object(const glm::vec3& position, const glm::vec3& scale)
 {
 	PlaneObject& plane_object = create_object<PlaneObject>();
-	plane_object.transform().position = position;
-	plane_object.transform().scale = scale;
+	plane_object.set_object_world_position(position);
+	plane_object.set_object_scale(scale);
 	notify_snapshot_invalidated();
 	return plane_object;
 }
@@ -90,7 +89,7 @@ PlaneObject& ClothWorld::create_plane_object(const glm::vec3& position, const gl
 SphereObject& ClothWorld::create_sphere_object(float radius, const glm::vec3& position)
 {
 	SphereObject& sphere_object = create_object<SphereObject>(radius);
-	sphere_object.transform().position = position;
+	sphere_object.set_object_world_position(position);
 	notify_snapshot_invalidated();
 	return sphere_object;
 }
@@ -102,11 +101,11 @@ void ClothWorld::spawn_sphere_projectile()
 		return;
 	}
 
-	const glm::vec3 forward = main_camera_object_->transform().forward();
-	const glm::vec3 spawn_position = main_camera_object_->transform().position + forward * kSpawnSphereForwardOffset;
+	const glm::vec3 forward = main_camera_object_->get_object_forward_direction();
+	const glm::vec3 spawn_position = main_camera_object_->get_object_world_position() + forward * kSpawnSphereForwardOffset;
 
 	SphereObject& sphere_object = create_object<SphereObject>(kSpawnSphereRadius);
-	sphere_object.transform().position = spawn_position;
+	sphere_object.set_object_world_position(spawn_position);
 	sphere_object.configure_projectile(forward * kSpawnSphereSpeed, kSpawnSphereMaxTravelDistance);
 	notify_snapshot_invalidated();
 }
@@ -119,7 +118,7 @@ ClothObject& ClothWorld::create_mesh_cloth(const std::filesystem::path& mesh_pat
 		mesh_path);
 	cloth_object.set_display_name(make_default_cloth_name(cloth_object.id(), solver_kind));
 	attach_solver(cloth_object, solver_kind);
-	cloth_object.transform().position = glm::vec3(0.35f * static_cast<float>(existing_cloth_count), 0.0f, 0.0f);
+	cloth_object.set_object_world_position(glm::vec3(0.35f * static_cast<float>(existing_cloth_count), 0.0f, 0.0f));
 	selected_cloth_id_ = cloth_object.id();
 	notify_snapshot_invalidated();
 	return cloth_object;
@@ -183,19 +182,6 @@ bool ClothWorld::select_cloth(ClothId cloth_id)
 	return true;
 }
 
-bool ClothWorld::set_cloth_position(ClothId cloth_id, const glm::vec3& position)
-{
-	ClothObject* cloth_object = find_cloth(cloth_id);
-	if (!cloth_object)
-	{
-		return false;
-	}
-
-	cloth_object->transform().position = position;
-	notify_cloth_value_changed(cloth_id, cloth_id, "position", position);
-	return true;
-}
-
 bool ClothWorld::set_cloth_property(
 	ClothId cloth_id,
 	ObjectId source_object_id,
@@ -208,19 +194,20 @@ bool ClothWorld::set_cloth_property(
 		return false;
 	}
 
-	Object* target_object = nullptr;
-	if (source_object_id == cloth_object->id())
-	{
-		target_object = cloth_object;
-	}
-	else
-	{
-		target_object = cloth_object->find_component<Component>(source_object_id);
-	}
+	Object* target_object = find_runtime_object(source_object_id);
 
 	if (!target_object)
 	{
 		return false;
+	}
+
+	if (target_object != cloth_object)
+	{
+		const Component* component = dynamic_cast<const Component*>(target_object);
+		if (!component || component->owner() != cloth_object)
+		{
+			return false;
+		}
 	}
 
 	return target_object->set_property(property_id, value);
@@ -235,7 +222,6 @@ bool ClothWorld::reset_cloth(ClothId cloth_id)
 	}
 
 	cloth_object->reset_to_initial_state();
-	notify_cloth_value_changed(cloth_id, cloth_id, "anchors_enabled", cloth_object->anchors_enabled());
 	return true;
 }
 
@@ -248,7 +234,6 @@ bool ClothWorld::toggle_cloth_anchors(ClothId cloth_id)
 	}
 
 	cloth_object->toggle_anchor_state();
-	notify_cloth_value_changed(cloth_id, cloth_id, "anchors_enabled", cloth_object->anchors_enabled());
 	return true;
 }
 
@@ -330,6 +315,17 @@ void ClothWorld::notify_cloth_value_changed(
 	}
 }
 
+void ClothWorld::on_world_object_property_changed(const WorldObject& object, const PropertyBase& property)
+{
+	if (const ClothObject* cloth_object = dynamic_cast<const ClothObject*>(&object))
+	{
+		notify_cloth_value_changed(cloth_object->cloth_id(), cloth_object->id(), std::string(property.id()), property.value());
+		return;
+	}
+
+	World::on_world_object_property_changed(object, property);
+}
+
 void ClothWorld::on_component_property_changed(
 	const WorldObject& owner,
 	const Component& component,
@@ -337,11 +333,8 @@ void ClothWorld::on_component_property_changed(
 {
 	if (const ClothObject* cloth_object = dynamic_cast<const ClothObject*>(&owner))
 	{
-		if (dynamic_cast<const ClothSimulationComponentBase*>(&component))
-		{
-			notify_cloth_value_changed(cloth_object->cloth_id(), component.id(), std::string(property.id()), property.value());
-			return;
-		}
+		notify_cloth_value_changed(cloth_object->cloth_id(), component.id(), std::string(property.id()), property.value());
+		return;
 	}
 
 	World::on_component_property_changed(owner, component, property);

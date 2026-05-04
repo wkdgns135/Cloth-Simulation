@@ -63,6 +63,7 @@ std::vector<glm::vec3> build_vertex_normals(
 ClothRenderComponent::ClothRenderComponent(const Cloth& cloth)
 	: cloth_(cloth)
 {
+	set_display_name("Cloth Renderer");
 }
 
 void ClothRenderComponent::collect_render_data(RenderScene& scene) const
@@ -76,16 +77,15 @@ void ClothRenderComponent::collect_render_data(RenderScene& scene) const
 	}
 
 	const std::vector<glm::vec3> normals = build_vertex_normals(particles, indices);
-	const glm::vec4 cloth_color(0.62f, 0.62f, 0.60f, 1.0f);
-
 	RenderObject object;
 	object.mesh.vertices.reserve(particles.size());
 	object.mesh.indices = indices;
 	object.material.base_color = glm::vec4(1.0f);
+	const glm::vec4 cloth_color(surface_color(), 1.0f);
 
 	if (const WorldObject* object_owner = owner())
 	{
-		object.transform = object_owner->transform().matrix();
+		object.transform = object_owner->get_object_transform_matrix();
 	}
 
 	for (std::size_t i = 0; i < particles.size(); ++i)

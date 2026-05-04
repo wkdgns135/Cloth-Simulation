@@ -128,6 +128,7 @@ bool build_isometric_bending_matrix(
 ClothSimulationComponentBase::ClothSimulationComponentBase(Cloth& cloth)
 	: cloth_(cloth)
 {
+	set_display_name("Cloth Simulation");
 }
 
 void ClothSimulationComponentBase::start()
@@ -434,7 +435,7 @@ glm::vec3 ClothSimulationComponentBase::world_to_local_point(const glm::vec3& wo
 {
 	if (const WorldObject* object_owner = owner())
 	{
-		const glm::mat4 inverse_transform = glm::inverse(object_owner->transform().matrix());
+		const glm::mat4 inverse_transform = glm::inverse(object_owner->get_object_transform_matrix());
 		return glm::vec3(inverse_transform * glm::vec4(world_point, 1.0f));
 	}
 
@@ -445,7 +446,7 @@ glm::vec3 ClothSimulationComponentBase::local_to_world_point(const glm::vec3& lo
 {
 	if (const WorldObject* object_owner = owner())
 	{
-		return glm::vec3(object_owner->transform().matrix() * glm::vec4(local_point, 1.0f));
+		return glm::vec3(object_owner->get_object_transform_matrix() * glm::vec4(local_point, 1.0f));
 	}
 
 	return local_point;

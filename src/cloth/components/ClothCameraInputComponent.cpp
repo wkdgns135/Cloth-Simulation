@@ -5,8 +5,8 @@
 
 #include <glm/geometric.hpp>
 
+#include "engine/components/TransformComponent.h"
 #include "engine/core/WorldObject.h"
-#include "engine/core/Transform.h"
 
 namespace
 {
@@ -25,6 +25,8 @@ glm::vec3 safe_normalize(const glm::vec3& value, const glm::vec3& fallback)
 
 ClothCameraInputComponent::ClothCameraInputComponent()
 {
+	set_display_name("Camera Controls");
+
 	bind_key_pressed(InputKey::W, this, &ClothCameraInputComponent::handle_move_forward_pressed);
 	bind_key_pressed(InputKey::Up, this, &ClothCameraInputComponent::handle_move_forward_pressed);
 	bind_key_pressed(InputKey::S, this, &ClothCameraInputComponent::handle_move_backward_pressed);
@@ -212,10 +214,11 @@ void ClothCameraInputComponent::initialize_focus_target()
 		return;
 	}
 
-	const Transform& transform = object_owner->transform();
+	const TransformComponent& transform = object_owner->transform();
+	const glm::vec3 position = transform.position();
 	const glm::vec3 forward = safe_normalize(transform.forward(), glm::vec3(0.0f, 0.0f, -1.0f));
-	const float default_distance = std::max(glm::length(transform.position), 1.0f);
-	focus_target_ = transform.position + forward * default_distance;
+	const float default_distance = std::max(glm::length(position), 1.0f);
+	focus_target_ = position + forward * default_distance;
 	focus_target_initialized_ = true;
 }
 
@@ -229,7 +232,7 @@ void ClothCameraInputComponent::move_camera(float delta_time)
 
 	initialize_focus_target();
 
-	Transform& transform = object_owner->transform();
+	TransformComponent& transform = object_owner->transform();
 	const glm::vec3 forward = safe_normalize(transform.forward(), glm::vec3(0.0f, 0.0f, -1.0f));
 	const glm::vec3 up = safe_normalize(transform.up(), glm::vec3(0.0f, 1.0f, 0.0f));
 	const glm::vec3 right = safe_normalize(transform.right(), glm::vec3(1.0f, 0.0f, 0.0f));
@@ -265,8 +268,8 @@ void ClothCameraInputComponent::move_camera(float delta_time)
 		return;
 	}
 
-	const glm::vec3 offset = glm::normalize(movement) * move_speed_ * delta_time;
-	transform.position += offset;
+	const glm::vec3 offset = glm::normalize(movement) * move_speed() * delta_time;
+	transform.set_position(transform.position() + offset);
 	focus_target_ += offset;
 }
 
@@ -280,10 +283,10 @@ void ClothCameraInputComponent::orbit_camera(const PointerPosition& delta)
 
 	initialize_focus_target();
 
-	Transform& transform = object_owner->transform();
-	const glm::vec3 offset = transform.position - focus_target_;
+	TransformComponent& transform = object_owner->transform();
+	const glm::vec3 offset = transform.position() - focus_target_;
 	const float radius = glm::length(offset);
-	if (radius <= min_distance_)
+	if (radius <= min_distance())
 	{
 		return;
 	}
@@ -291,15 +294,15 @@ void ClothCameraInputComponent::orbit_camera(const PointerPosition& delta)
 	float yaw = std::atan2(offset.x, offset.z);
 	float pitch = std::asin(std::clamp(offset.y / radius, -1.0f, 1.0f));
 
-	yaw -= delta.x * orbit_sensitivity_;
-	pitch += delta.y * orbit_sensitivity_;
-	pitch = std::clamp(pitch, -max_pitch_, max_pitch_);
+	yaw -= delta.x * orbit_sensitivity();
+	pitch += delta.y * orbit_sensitivity();
+	pitch = std::clamp(pitch, -max_pitch(), max_pitch());
 
 	const float cos_pitch = std::cos(pitch);
-	transform.position = focus_target_ + glm::vec3(
+	transform.set_position(focus_target_ + glm::vec3(
 		std::sin(yaw) * cos_pitch * radius,
 		std::sin(pitch) * radius,
-		std::cos(yaw) * cos_pitch * radius);
+		std::cos(yaw) * cos_pitch * radius));
 	transform.look_at(focus_target_);
 }
 
@@ -313,8 +316,8 @@ void ClothCameraInputComponent::zoom_camera(float wheel_steps)
 
 	initialize_focus_target();
 
-	Transform& transform = object_owner->transform();
-	glm::vec3 offset = transform.position - focus_target_;
+	TransformComponent& transform = object_owner->transform();
+	glm::vec3 offset = transform.position() - focus_target_;
 	float distance = glm::length(offset);
 
 	if (distance <= kVectorLengthThreshold)
@@ -325,10 +328,10 @@ void ClothCameraInputComponent::zoom_camera(float wheel_steps)
 
 	const glm::vec3 direction = offset / distance;
 	const float next_distance = std::clamp(
-		distance * std::pow(zoom_step_scale_, wheel_steps),
-		min_distance_,
-		max_distance_);
+		distance * std::pow(zoom_step_scale(), wheel_steps),
+		min_distance(),
+		max_distance());
 
-	transform.position = focus_target_ + direction * next_distance;
+	transform.set_position(focus_target_ + direction * next_distance);
 	transform.look_at(focus_target_);
 }

@@ -8,6 +8,7 @@
 PBDClothSimulationComponent::PBDClothSimulationComponent(Cloth& cloth)
 	: ClothSimulationComponentBase(cloth)
 {
+	set_display_name("PBD Solver");
 }
 
 void PBDClothSimulationComponent::update_simulation(float delta_time)
@@ -22,15 +23,15 @@ void PBDClothSimulationComponent::update_simulation(float delta_time)
 
 	const int iterations = constraint_iterations();
 	const int solver_passes = std::max(1, iterations);
-	const float stretch_stiffness = per_iteration_stiffness(stretch_stiffness_);
-	const float bend_stiffness = per_iteration_stiffness(bend_stiffness_);
+	const float stretch_stiffness_per_iteration = per_iteration_stiffness(stretch_stiffness());
+	const float bend_stiffness_per_iteration = per_iteration_stiffness(bend_stiffness());
 
 	for (int i = 0; i < solver_passes; ++i)
 	{
 		if (i < iterations)
 		{
-			solve_distance_constraints(stretch_stiffness);
-			solve_bending_constraints(bend_stiffness);
+			solve_distance_constraints(stretch_stiffness_per_iteration);
+			solve_bending_constraints(bend_stiffness_per_iteration);
 		}
 
 		solve_collision_objects();

@@ -151,26 +151,13 @@ void ClothObject::reset_to_initial_state()
 {
 	refresh_initial_state_if_needed();
 	cloth_.get_particles() = initial_particles_;
-	anchors_enabled_ = true;
+	set_anchors_enabled(true);
 }
 
 void ClothObject::toggle_anchor_state()
 {
 	refresh_initial_state_if_needed();
-	anchors_enabled_ = !anchors_enabled_;
-
-	auto& particles = cloth_.get_particles();
-	const std::size_t particle_count = std::min(particles.size(), initial_particles_.size());
-
-	for (std::size_t i = 0; i < particle_count; ++i)
-	{
-		particles[i].is_fixed = anchors_enabled_ ? initial_particles_[i].is_fixed : false;
-
-		if (particles[i].is_fixed)
-		{
-			particles[i].prev_position = particles[i].position;
-		}
-	}
+	set_anchors_enabled(!anchors_enabled());
 }
 
 bool ClothObject::hit_test(const glm::vec3& ray_origin, const glm::vec3& ray_direction, float& hit_distance) const
@@ -182,7 +169,7 @@ bool ClothObject::hit_test(const glm::vec3& ray_origin, const glm::vec3& ray_dir
 		return false;
 	}
 
-	const glm::mat4 object_transform = transform().matrix();
+	const glm::mat4 object_transform = get_object_transform_matrix();
 	bool has_hit = false;
 	float closest_distance = hit_distance;
 
@@ -239,7 +226,6 @@ void ClothObject::cache_initial_state()
 {
 	initial_particles_ = cloth_.get_particles();
 	cached_topology_revision_ = cloth_.get_topology_revision();
-	anchors_enabled_ = true;
 }
 
 void ClothObject::refresh_initial_state_if_needed()
@@ -248,5 +234,21 @@ void ClothObject::refresh_initial_state_if_needed()
 		|| initial_particles_.size() != cloth_.get_particles().size())
 	{
 		cache_initial_state();
+	}
+}
+
+void ClothObject::apply_anchor_state(bool enabled)
+{
+	auto& particles = cloth_.get_particles();
+	const std::size_t particle_count = std::min(particles.size(), initial_particles_.size());
+
+	for (std::size_t i = 0; i < particle_count; ++i)
+	{
+		particles[i].is_fixed = enabled ? initial_particles_[i].is_fixed : false;
+
+		if (particles[i].is_fixed)
+		{
+			particles[i].prev_position = particles[i].position;
+		}
 	}
 }

@@ -1,7 +1,89 @@
 #include "engine/core/WorldObject.h"
 
 #include "engine/components/RenderComponent.h"
+#include "engine/components/TransformComponent.h"
 #include "engine/core/World.h"
+
+WorldObject::WorldObject()
+{
+	transform_component_ = &add_component<TransformComponent>();
+}
+
+WorldObject::WorldObject(std::string display_name)
+	: Object(std::move(display_name))
+{
+	transform_component_ = &add_component<TransformComponent>();
+}
+
+TransformComponent& WorldObject::transform()
+{
+	return *transform_component_;
+}
+
+const TransformComponent& WorldObject::transform() const
+{
+	return *transform_component_;
+}
+
+glm::vec3 WorldObject::get_object_world_position() const
+{
+	return transform().position();
+}
+
+void WorldObject::set_object_world_position(const glm::vec3& position)
+{
+	transform().set_position(position);
+}
+
+glm::vec3 WorldObject::get_object_rotation() const
+{
+	return transform().rotation();
+}
+
+void WorldObject::set_object_rotation(const glm::vec3& rotation)
+{
+	transform().set_rotation(rotation);
+}
+
+glm::vec3 WorldObject::get_object_scale() const
+{
+	return transform().scale();
+}
+
+void WorldObject::set_object_scale(const glm::vec3& scale)
+{
+	transform().set_scale(scale);
+}
+
+glm::mat4 WorldObject::get_object_transform_matrix() const
+{
+	return transform().matrix();
+}
+
+glm::vec3 WorldObject::get_object_forward_direction() const
+{
+	return transform().forward();
+}
+
+glm::vec3 WorldObject::get_object_up_direction() const
+{
+	return transform().up();
+}
+
+glm::vec3 WorldObject::get_object_right_direction() const
+{
+	return transform().right();
+}
+
+void WorldObject::set_object_forward_direction(const glm::vec3& direction)
+{
+	transform().set_forward(direction);
+}
+
+void WorldObject::look_at_world_position(const glm::vec3& target)
+{
+	transform().look_at(target);
+}
 
 void WorldObject::add_component(std::unique_ptr<Component> component)
 {

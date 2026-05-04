@@ -34,7 +34,8 @@ public:
 	ClothId cloth_id() const { return id(); }
 	const std::string& source_label() const { return source_label_; }
 	ClothSourceKind source_kind() const { return source_kind_; }
-	bool anchors_enabled() const { return anchors_enabled_; }
+	void set_anchors_enabled(bool enabled) { anchors_enabled_property_(enabled); }
+	bool anchors_enabled() const { return anchors_enabled_property_(); }
 	ClothSolverKind solver_kind() const;
 
 	Cloth& cloth() { return cloth_; }
@@ -50,6 +51,7 @@ protected:
 	bool on_click(const ClickInputEvent& event) override;
 	
 private:
+	void apply_anchor_state(bool enabled);
 	void cache_initial_state();
 	void refresh_initial_state_if_needed();
 
@@ -58,5 +60,10 @@ private:
 	Cloth cloth_;
 	std::vector<Particle> initial_particles_;
 	std::uint64_t cached_topology_revision_ = 0;
-	bool anchors_enabled_ = true;
+	Property<bool> anchors_enabled_property_{
+		*this,
+		make_property_config<bool>("anchors_enabled", "Anchors Enabled", "Cloth"),
+		true,
+		{},
+		[this](const bool& enabled) { apply_anchor_state(enabled); } };
 };

@@ -5,6 +5,7 @@
 
 #include <cstdint>
 #include <filesystem>
+#include <optional>
 #include <vector>
 
 #include "cloth/ClothWorld.h"
@@ -20,12 +21,16 @@ public:
 	struct PropertyViewState
 	{
 		std::uint64_t source_object_id = 0;
+		QString source_label;
 		QString id;
 		QString label;
 		QString group;
 		PropertyType type = PropertyType::Float;
 		bool editable = true;
 		PropertyValue value = false;
+		std::optional<PropertyValue> min_value;
+		std::optional<PropertyValue> max_value;
+		std::optional<PropertyValue> step;
 	};
 
 	struct ClothViewState
@@ -37,12 +42,6 @@ public:
 		QString solver_label;
 		int particle_count = 0;
 		int triangle_count = 0;
-		bool anchors_enabled = false;
-		float position_x = 0.0f;
-		float position_y = 0.0f;
-		float position_z = 0.0f;
-		float damping = 0.99f;
-		int constraint_iterations = 20;
 		std::vector<PropertyViewState> properties;
 	};
 
@@ -63,7 +62,6 @@ public:
 	void spawn_sphere_from_view();
 	void set_selected_cloth(std::uint64_t cloth_id);
 	void update_selected_cloth_property(std::uint64_t source_object_id, const QString& property_id, const PropertyValue& value);
-	void update_selected_cloth_position(float x, float y, float z);
 	void reset_selected_cloth();
 	void toggle_selected_cloth_anchors();
 	void delete_selected_cloth();
@@ -83,4 +81,5 @@ private:
 	Engine& engine_;
 	WorldViewState snapshot_;
 	bool snapshot_request_pending_ = false;
+	bool snapshot_refresh_requested_ = false;
 };

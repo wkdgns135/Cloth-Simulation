@@ -1,5 +1,7 @@
 #pragma once
 
+#include <algorithm>
+
 #include <glm/glm.hpp>
 
 #include "engine/components/InputComponent.h"
@@ -44,10 +46,10 @@ private:
 	bool moving_up_ = false;
 	bool moving_down_ = false;
 	bool rotating_camera_ = false;
-	float move_speed_ = 1.2f;
-	float orbit_sensitivity_ = 0.006f;
-	float zoom_step_scale_ = 0.88f;
-	float min_distance_ = 0.2f;
-	float max_distance_ = 20.0f;
-	float max_pitch_ = 1.55334306f;
+	PROPERTY_RANGE_NORMALIZED(float, move_speed, "Camera Controls", "Move Speed", 1.2f, 0.0f, 100.0f, 0.05f, [](float value) { return std::max(value, 0.0f); })
+	PROPERTY_RANGE_NORMALIZED(float, orbit_sensitivity, "Camera Controls", "Orbit Sensitivity", 0.006f, 0.0001f, 0.1f, 0.0001f, [](float value) { return std::max(value, 0.0001f); })
+	PROPERTY_RANGE_NORMALIZED(float, zoom_step_scale, "Camera Controls", "Zoom Step Scale", 0.88f, 0.01f, 10.0f, 0.01f, [](float value) { return std::max(value, 0.01f); })
+	PROPERTY_RANGE_NORMALIZED(float, min_distance, "Camera Controls", "Min Distance", 0.2f, 0.01f, 100.0f, 0.01f, [](float value) { return std::max(value, 0.01f); })
+	PROPERTY_RANGE_NORMALIZED(float, max_distance, "Camera Controls", "Max Distance", 20.0f, 0.1f, 1000.0f, 0.1f, [](float value) { return std::max(value, 0.1f); })
+	PROPERTY_RANGE_NORMALIZED(float, max_pitch, "Camera Controls", "Max Pitch", 1.55334306f, 0.1f, 1.56979633f, 0.001f, [](float value) { return std::clamp(value, 0.1f, 1.56979633f); })
 };

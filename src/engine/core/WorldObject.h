@@ -1,5 +1,7 @@
 #pragma once
 
+#include <glm/glm.hpp>
+
 #include <memory>
 #include <type_traits>
 #include <utility>
@@ -7,21 +9,18 @@
 
 #include "engine/core/Component.h"
 #include "engine/core/IndexedStore.h"
-#include "engine/core/Transform.h"
 
 struct RenderScene;
 struct ClickInputEvent;
 struct PointerPosition;
 class World;
+class TransformComponent;
 
 class WorldObject : public Object
 {
 public:
-	WorldObject() = default;
-	explicit WorldObject(std::string display_name)
-		: Object(std::move(display_name))
-	{
-	}
+	WorldObject();
+	explicit WorldObject(std::string display_name);
 	~WorldObject() override = default;
 
 	WorldObject(const WorldObject&) = delete;
@@ -42,11 +41,25 @@ public:
 	void request_destroy();
 	bool destroy_requested() const { return destroy_requested_; }
 
-	Transform& transform() { return transform_; }
-	const Transform& transform() const { return transform_; }
+	TransformComponent& transform();
+	const TransformComponent& transform() const;
+	glm::vec3 get_object_world_position() const;
+	void set_object_world_position(const glm::vec3& position);
+	glm::vec3 get_object_rotation() const;
+	void set_object_rotation(const glm::vec3& rotation);
+	glm::vec3 get_object_scale() const;
+	void set_object_scale(const glm::vec3& scale);
+	glm::mat4 get_object_transform_matrix() const;
+	glm::vec3 get_object_forward_direction() const;
+	glm::vec3 get_object_up_direction() const;
+	glm::vec3 get_object_right_direction() const;
+	void set_object_forward_direction(const glm::vec3& direction);
+	void look_at_world_position(const glm::vec3& target);
 	void set_world(World* world) { world_ = world; }
 	World* world() { return world_; }
 	const World* world() const { return world_; }
+	IndexedStore<Component>::Storage& components() { return components_.ordered(); }
+	const IndexedStore<Component>::Storage& components() const { return components_.ordered(); }
 
 	void add_component(std::unique_ptr<Component> component);
 
@@ -146,9 +159,9 @@ protected:
 private:
 	friend class Component;
 
-	Transform transform_;
 	World* world_ = nullptr;
 	IndexedStore<Component> components_;
+	TransformComponent* transform_component_ = nullptr;
 	bool awakened_ = false;
 	bool started_ = false;
 	bool destroyed_ = false;

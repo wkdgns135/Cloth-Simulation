@@ -9,9 +9,10 @@ class SphereObject final : public CollisionObject
 public:
 	explicit SphereObject(float radius = 1.0f);
 
-	void set_linear_velocity(const glm::vec3& velocity) { linear_velocity_ = velocity; }
-	const glm::vec3& linear_velocity() const { return linear_velocity_; }
-	void configure_projectile(const glm::vec3& velocity, float max_travel_distance);
+	PROPERTY(glm::vec3, linear_velocity, "Motion", "Linear Velocity", glm::vec3(0.0f))
+	PROPERTY_RANGE_NORMALIZED(float, max_travel_distance, "Motion", "Max Travel Distance", 0.0f, 0.0f, 1000.0f, 0.1f, [](float value) { return std::max(value, 0.0f); })
+	PROPERTY(bool, lifetime_limit_enabled, "Motion", "Lifetime Limit Enabled", false)
+	void configure_projectile(const glm::vec3& velocity, float travel_distance_limit);
 
 	void update(float delta_time) override;
 
@@ -26,8 +27,5 @@ private:
 	float world_radius() const;
 
 	float radius_ = 1.0f;
-	glm::vec3 linear_velocity_ = glm::vec3(0.0f);
 	glm::vec3 spawn_position_ = glm::vec3(0.0f);
-	float max_travel_distance_ = 0.0f;
-	bool lifetime_limit_enabled_ = false;
 };

@@ -88,10 +88,10 @@ World::World()
 	main_camera_object_ = &create_object<CameraObject>();
 	main_directional_light_object_ = &create_object<DirectionalLightObject>();
 
-	main_camera_object_->transform().position = glm::vec3(0.0f, 0.0f, 2.0f);
-	main_camera_object_->transform().look_at(glm::vec3(0.0f));
+	main_camera_object_->set_object_world_position(glm::vec3(0.0f, 0.0f, 2.0f));
+	main_camera_object_->look_at_world_position(glm::vec3(0.0f));
 
-	main_directional_light_object_->transform().set_forward(glm::normalize(glm::vec3(-0.35f, 0.65f, 0.70f)));
+	main_directional_light_object_->set_object_forward_direction(glm::normalize(glm::vec3(-0.35f, 0.65f, 0.70f)));
 }
 
 void World::awake()
@@ -311,6 +311,62 @@ void World::set_viewport_size(int width, int height)
 {
 	viewport_width_ = width > 0 ? width : 1;
 	viewport_height_ = height > 0 ? height : 1;
+}
+
+Object* World::find_runtime_object(ObjectId object_id)
+{
+	if (WorldObject* world_object = find_object(object_id))
+	{
+		return world_object;
+	}
+
+	for (const std::unique_ptr<WorldObject>& world_object : world_objects_.ordered())
+	{
+		if (!world_object)
+		{
+			continue;
+		}
+
+		if (Component* component = world_object->find_component<Component>(object_id))
+		{
+			return component;
+		}
+	}
+
+	return nullptr;
+}
+
+const Object* World::find_runtime_object(ObjectId object_id) const
+{
+	if (const WorldObject* world_object = find_object(object_id))
+	{
+		return world_object;
+	}
+
+	for (const std::unique_ptr<WorldObject>& world_object : world_objects_.ordered())
+	{
+		if (!world_object)
+		{
+			continue;
+		}
+
+		if (const Component* component = world_object->find_component<Component>(object_id))
+		{
+			return component;
+		}
+	}
+
+	return nullptr;
+}
+
+bool World::set_runtime_object_property(ObjectId object_id, std::string_view property_id, const PropertyValue& value)
+{
+	if (Object* object = find_runtime_object(object_id))
+	{
+		return object->set_property(property_id, value);
+	}
+
+	return false;
 }
 
 void World::notify_world_object_property_changed(const WorldObject& object, const PropertyBase& property)

@@ -31,7 +31,7 @@ MeshData build_sphere_mesh(float radius)
 		for (int slice = 0; slice <= kSphereSlices; ++slice)
 		{
 			const float u = static_cast<float>(slice) / static_cast<float>(kSphereSlices);
-			const float theta = u * glm::two_pi<float>();
+			const float theta = u * (2.0f * glm::pi<float>());
 			const glm::vec3 normal(
 				std::cos(theta) * ring_radius,
 				y,
@@ -69,15 +69,16 @@ MeshData build_sphere_mesh(float radius)
 SphereObject::SphereObject(float radius)
 	: radius_(std::max(radius, 0.0f))
 {
+	set_display_name("Sphere");
 	add_component<StaticMeshRenderComponent>(build_sphere_mesh(radius_), glm::vec4(0.72f, 0.28f, 0.24f, 1.0f));
 }
 
-void SphereObject::configure_projectile(const glm::vec3& velocity, float max_travel_distance)
+void SphereObject::configure_projectile(const glm::vec3& velocity, float travel_distance_limit)
 {
-	linear_velocity_ = velocity;
-	spawn_position_ = transform().position;
-	max_travel_distance_ = std::max(max_travel_distance, 0.0f);
-	lifetime_limit_enabled_ = max_travel_distance_ > 0.0f;
+	set_linear_velocity(velocity);
+	spawn_position_ = get_object_world_position();
+	set_max_travel_distance(travel_distance_limit);
+	set_lifetime_limit_enabled(max_travel_distance() > 0.0f);
 }
 
 void SphereObject::update(float delta_time)
@@ -89,15 +90,15 @@ void SphereObject::update(float delta_time)
 		return;
 	}
 
-	transform().position += linear_velocity_ * delta_time;
+	set_object_world_position(get_object_world_position() + linear_velocity() * delta_time);
 
-	if (!lifetime_limit_enabled_)
+	if (!lifetime_limit_enabled())
 	{
 		return;
 	}
 
-	const glm::vec3 delta = transform().position - spawn_position_;
-	if (glm::dot(delta, delta) >= max_travel_distance_ * max_travel_distance_)
+	const glm::vec3 delta = get_object_world_position() - spawn_position_;
+	if (glm::dot(delta, delta) >= max_travel_distance() * max_travel_distance())
 	{
 		request_destroy();
 	}
@@ -108,7 +109,7 @@ bool SphereObject::resolve_particle_collision(
 	glm::vec3& world_prev_position,
 	float margin) const
 {
-	const glm::vec3 center = transform().position;
+	const glm::vec3 center = get_object_world_position();
 	const float target_radius = world_radius() + margin;
 	const glm::vec3 delta = world_position - center;
 	const float distance_squared = glm::dot(delta, delta);
@@ -146,7 +147,7 @@ bool SphereObject::resolve_particle_collision(
 
 float SphereObject::world_radius() const
 {
-	const glm::vec3 scale = transform().scale;
+	const glm::vec3 scale = get_object_scale();
 	const glm::vec3 abs_scale(std::abs(scale.x), std::abs(scale.y), std::abs(scale.z));
 	return radius_ * std::max({ abs_scale.x, abs_scale.y, abs_scale.z });
 }
