@@ -5,6 +5,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <cfloat>
+#include <limits>
 #include <random>
 #include <sstream>
 #include <unordered_set>
@@ -18,6 +19,7 @@
 #include "components/ClothSimulationComponentBase.h"
 #include "components/PBDClothSimulationComponent.h"
 #include "components/XPBDClothSimulationComponent.h"
+#include "engine/core/World.h"
 #include "io/MeshLoader.h"
 
 namespace
@@ -183,6 +185,12 @@ bool intersect_triangle(
 	hit_distance = t;
 	return true;
 }
+
+glm::vec3 world_to_local_point(const WorldObject& object, const glm::vec3& world_point)
+{
+	const glm::mat4 inverse_transform = glm::inverse(object.get_object_transform_matrix());
+	return glm::vec3(inverse_transform * glm::vec4(world_point, 1.0f));
+}
 }
 
 ClothObject::ClothObject(std::string display_name, int width, int height, float spacing)
@@ -233,6 +241,7 @@ const ClothSimulationComponentBase* ClothObject::simulation_component() const
 
 void ClothObject::reset_to_initial_state()
 {
+	end_particle_grab();
 	refresh_initial_state_if_needed();
 	cloth_.get_particles() = initial_particles_;
 	set_anchors_enabled(true);
@@ -240,8 +249,161 @@ void ClothObject::reset_to_initial_state()
 
 void ClothObject::toggle_anchor_state()
 {
+	end_particle_grab();
 	refresh_initial_state_if_needed();
 	set_anchors_enabled(!anchors_enabled());
+}
+
+bool ClothObject::begin_particle_grab(const PointerPosition& pointer_position)
+{
+	World* current_world = world();
+	if (!current_world || current_world->pick_object(pointer_position) != this)
+	{
+		return false;
+	}
+
+	glm::vec3 ray_origin(0.0f);
+	glm::vec3 ray_direction(0.0f);
+	if (!current_world->build_pick_ray(pointer_position, ray_origin, ray_direction))
+	{
+		return false;
+	}
+
+	const std::vector<Particle>& particles = cloth_.get_particles();
+	const std::vector<unsigned int>& indices = cloth_.get_indices();
+	if (particles.empty() || indices.size() < 3)
+	{
+		return false;
+	}
+
+	const glm::mat4 object_transform = get_object_transform_matrix();
+	float closest_hit_distance = std::numeric_limits<float>::max();
+	glm::vec3 hit_point(0.0f);
+	bool has_hit = false;
+
+	for (std::size_t i = 0; i + 2 < indices.size(); i += 3)
+	{
+		const unsigned int i0 = indices[i];
+		const unsigned int i1 = indices[i + 1];
+		const unsigned int i2 = indices[i + 2];
+		if (i0 >= particles.size() || i1 >= particles.size() || i2 >= particles.size())
+		{
+			continue;
+		}
+
+		const glm::vec3 p0 = glm::vec3(object_transform * glm::vec4(particles[i0].position, 1.0f));
+		const glm::vec3 p1 = glm::vec3(object_transform * glm::vec4(particles[i1].position, 1.0f));
+		const glm::vec3 p2 = glm::vec3(object_transform * glm::vec4(particles[i2].position, 1.0f));
+
+		float hit_distance = 0.0f;
+		if (!intersect_triangle(ray_origin, ray_direction, p0, p1, p2, hit_distance))
+		{
+			continue;
+		}
+
+		if (hit_distance < closest_hit_distance)
+		{
+			closest_hit_distance = hit_distance;
+			hit_point = ray_origin + ray_direction * hit_distance;
+			has_hit = true;
+		}
+	}
+
+	if (!has_hit)
+	{
+		return false;
+	}
+
+	int closest_particle_index = -1;
+	float closest_particle_distance_squared = std::numeric_limits<float>::max();
+
+	for (std::size_t i = 0; i < particles.size(); ++i)
+	{
+		const glm::vec3 world_particle_position = glm::vec3(object_transform * glm::vec4(particles[i].position, 1.0f));
+		const glm::vec3 delta = world_particle_position - hit_point;
+		const float distance_squared = glm::dot(delta, delta);
+		if (distance_squared < closest_particle_distance_squared)
+		{
+			closest_particle_distance_squared = distance_squared;
+			closest_particle_index = static_cast<int>(i);
+		}
+	}
+
+	if (closest_particle_index < 0)
+	{
+		return false;
+	}
+
+	end_particle_grab();
+
+	Particle& grabbed_particle = cloth_.get_particles()[closest_particle_index];
+	grabbed_particle_index_ = closest_particle_index;
+	grabbed_particle_ray_distance_ = closest_hit_distance;
+	grabbed_particle_was_fixed_ = grabbed_particle.is_fixed;
+	grabbed_particle.is_fixed = true;
+
+	const glm::vec3 local_hit_point = world_to_local_point(*this, hit_point);
+	grabbed_particle.position = local_hit_point;
+	grabbed_particle.prev_position = local_hit_point;
+	return true;
+}
+
+bool ClothObject::update_particle_grab(const PointerPosition& pointer_position)
+{
+	if (grabbed_particle_index_ < 0)
+	{
+		return false;
+	}
+
+	World* current_world = world();
+	if (!current_world)
+	{
+		return false;
+	}
+
+	glm::vec3 ray_origin(0.0f);
+	glm::vec3 ray_direction(0.0f);
+	if (!current_world->build_pick_ray(pointer_position, ray_origin, ray_direction))
+	{
+		return false;
+	}
+
+	auto& particles = cloth_.get_particles();
+	if (grabbed_particle_index_ >= static_cast<int>(particles.size()))
+	{
+		grabbed_particle_index_ = -1;
+		return false;
+	}
+
+	const glm::vec3 target_world_position = ray_origin + ray_direction * grabbed_particle_ray_distance_;
+	const glm::vec3 target_local_position = world_to_local_point(*this, target_world_position);
+
+	Particle& grabbed_particle = particles[grabbed_particle_index_];
+	grabbed_particle.is_fixed = true;
+	grabbed_particle.position = target_local_position;
+	grabbed_particle.prev_position = target_local_position;
+	return true;
+}
+
+bool ClothObject::end_particle_grab()
+{
+	if (grabbed_particle_index_ < 0)
+	{
+		return false;
+	}
+
+	auto& particles = cloth_.get_particles();
+	if (grabbed_particle_index_ < static_cast<int>(particles.size()))
+	{
+		Particle& grabbed_particle = particles[grabbed_particle_index_];
+		grabbed_particle.prev_position = grabbed_particle.position;
+		grabbed_particle.is_fixed = grabbed_particle_was_fixed_;
+	}
+
+	grabbed_particle_index_ = -1;
+	grabbed_particle_ray_distance_ = 0.0f;
+	grabbed_particle_was_fixed_ = false;
+	return true;
 }
 
 bool ClothObject::hit_test(const glm::vec3& ray_origin, const glm::vec3& ray_direction, float& hit_distance) const

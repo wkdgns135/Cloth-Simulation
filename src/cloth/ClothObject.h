@@ -43,6 +43,10 @@ public:
 	ClothSimulationComponentBase* simulation_component();
 	const ClothSimulationComponentBase* simulation_component() const;
 
+	bool begin_particle_grab(const PointerPosition& pointer_position);
+	bool update_particle_grab(const PointerPosition& pointer_position);
+	bool end_particle_grab();
+	bool has_grabbed_particle() const { return grabbed_particle_index_ >= 0; }
 	void reset_to_initial_state();
 	void toggle_anchor_state();
 	bool hit_test(const glm::vec3& ray_origin, const glm::vec3& ray_direction, float& hit_distance) const override;
@@ -60,6 +64,9 @@ private:
 	Cloth cloth_;
 	std::vector<Particle> initial_particles_;
 	std::uint64_t cached_topology_revision_ = 0;
+	int grabbed_particle_index_ = -1;
+	float grabbed_particle_ray_distance_ = 0.0f;
+	bool grabbed_particle_was_fixed_ = false;
 	Property<bool> anchors_enabled_property_{
 		*this,
 		make_property_config<bool>("anchors_enabled", "Anchors Enabled", "Cloth"),

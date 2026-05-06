@@ -145,6 +145,8 @@ public:
 	bool on_click(const ClickInputEvent& event);
 	bool on_wheel_scrolled(const WheelInputEvent& event);
 	void set_viewport_size(int width, int height);
+	bool build_pick_ray(const PointerPosition& position, glm::vec3& ray_origin, glm::vec3& ray_direction) const;
+	WorldObject* pick_object(const PointerPosition& position) const;
 	void request_destroy_object(WorldObject* object);
 	void notify_world_object_property_changed(const WorldObject& object, const PropertyBase& property);
 	void notify_component_property_changed(const WorldObject& owner, const Component& component, const PropertyBase& property);
@@ -195,7 +197,6 @@ private:
 	void unsubscribe_pointer_released(PointerButton button, InputSubscriptionHandle handle);
 	void unsubscribe_pointer_moved(InputSubscriptionHandle handle);
 	void unsubscribe_wheel_scrolled(InputSubscriptionHandle handle);
-	WorldObject* pick_object(const PointerPosition& position) const;
 	void update_hovered_object(const PointerPosition& position);
 	bool destroy_object_immediate(WorldObject* object);
 	void flush_destroy_requests();

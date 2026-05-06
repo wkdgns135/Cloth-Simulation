@@ -314,6 +314,39 @@ void World::set_viewport_size(int width, int height)
 	viewport_height_ = height > 0 ? height : 1;
 }
 
+bool World::build_pick_ray(const PointerPosition& position, glm::vec3& ray_origin, glm::vec3& ray_direction) const
+{
+	if (!main_camera_object_)
+	{
+		return false;
+	}
+
+	const Camera camera = main_camera_object_->build_camera();
+	const float aspect = static_cast<float>(viewport_width_) / static_cast<float>(viewport_height_);
+	const glm::mat4 view = glm::lookAt(camera.position, camera.target, camera.up);
+	const glm::mat4 projection = glm::perspective(
+		glm::radians(camera.fov_y_degrees),
+		aspect,
+		camera.near_plane,
+		camera.far_plane);
+	const glm::mat4 inverse_view_projection = glm::inverse(projection * view);
+
+	const float ndc_x = (2.0f * position.x) / static_cast<float>(viewport_width_) - 1.0f;
+	const float ndc_y = 1.0f - (2.0f * position.y) / static_cast<float>(viewport_height_);
+
+	const glm::vec3 near_point = project_point_from_clip_space(inverse_view_projection, glm::vec3(ndc_x, ndc_y, -1.0f));
+	const glm::vec3 far_point = project_point_from_clip_space(inverse_view_projection, glm::vec3(ndc_x, ndc_y, 1.0f));
+	const glm::vec3 direction = far_point - near_point;
+	if (glm::dot(direction, direction) <= kPickRayMinDistance)
+	{
+		return false;
+	}
+
+	ray_origin = camera.position;
+	ray_direction = glm::normalize(direction);
+	return true;
+}
+
 Object* World::find_runtime_object(ObjectId object_id)
 {
 	if (WorldObject* world_object = find_object(object_id))
@@ -598,33 +631,12 @@ void World::unsubscribe_wheel_scrolled(InputSubscriptionHandle handle)
 
 WorldObject* World::pick_object(const PointerPosition& position) const
 {
-	if (!main_camera_object_)
+	glm::vec3 ray_origin(0.0f);
+	glm::vec3 ray_direction(0.0f);
+	if (!build_pick_ray(position, ray_origin, ray_direction))
 	{
 		return nullptr;
 	}
-
-	const Camera camera = main_camera_object_->build_camera();
-	const float aspect = static_cast<float>(viewport_width_) / static_cast<float>(viewport_height_);
-	const glm::mat4 view = glm::lookAt(camera.position, camera.target, camera.up);
-	const glm::mat4 projection = glm::perspective(
-		glm::radians(camera.fov_y_degrees),
-		aspect,
-		camera.near_plane,
-		camera.far_plane);
-	const glm::mat4 inverse_view_projection = glm::inverse(projection * view);
-
-	const float ndc_x = (2.0f * position.x) / static_cast<float>(viewport_width_) - 1.0f;
-	const float ndc_y = 1.0f - (2.0f * position.y) / static_cast<float>(viewport_height_);
-
-	const glm::vec3 near_point = project_point_from_clip_space(inverse_view_projection, glm::vec3(ndc_x, ndc_y, -1.0f));
-	const glm::vec3 far_point = project_point_from_clip_space(inverse_view_projection, glm::vec3(ndc_x, ndc_y, 1.0f));
-	const glm::vec3 ray_direction = far_point - near_point;
-	if (glm::dot(ray_direction, ray_direction) <= kPickRayMinDistance)
-	{
-		return nullptr;
-	}
-
-	const glm::vec3 normalized_ray_direction = glm::normalize(ray_direction);
 
 	WorldObject* closest_object = nullptr;
 	float closest_hit_distance = 0.0f;
@@ -632,7 +644,7 @@ WorldObject* World::pick_object(const PointerPosition& position) const
 	for (const std::unique_ptr<WorldObject>& object : world_objects_.ordered())
 	{
 		float hit_distance = 0.0f;
-		if (!object->hit_test(camera.position, normalized_ray_direction, hit_distance))
+		if (!object->hit_test(ray_origin, ray_direction, hit_distance))
 		{
 			continue;
 		}
