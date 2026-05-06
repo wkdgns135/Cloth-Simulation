@@ -81,14 +81,12 @@ bool PlaneObject::resolve_particle_collision(
 		return false;
 	}
 
-	world_position += (margin - signed_distance) * plane_normal;
+	const float clamped_friction = std::clamp(collision_friction(), 0.0f, 1.0f);
+	const glm::vec3 step_displacement = world_position - world_prev_position;
+	world_position -= clamped_friction * step_displacement;
 
-	const glm::vec3 world_velocity = world_position - world_prev_position;
-	const float normal_velocity = glm::dot(world_velocity, plane_normal);
-	if (normal_velocity < 0.0f)
-	{
-		world_prev_position += normal_velocity * plane_normal;
-	}
+	const float corrected_signed_distance = glm::dot(plane_normal, world_position - plane_point);
+	world_position += (margin - corrected_signed_distance) * plane_normal;
 
 	return true;
 }

@@ -3,10 +3,14 @@
 #include <algorithm>
 #include <cmath>
 #include <cstddef>
-#include <sstream>
-#include <vector>
+#include <cstdint>
 #include <cfloat>
+#include <random>
+#include <sstream>
+#include <unordered_set>
+#include <vector>
 
+#include <glm/geometric.hpp>
 #include <glm/ext/scalar_relational.hpp>
 
 #include "components/ClothInteractionComponent.h"
@@ -19,12 +23,91 @@
 namespace
 {
 constexpr float kRayIntersectionEpsilon = 0.000001f;
+constexpr float kInitialJitterScale = 0.001f;
 
 std::string make_grid_source_label(int width, int height, float spacing)
 {
 	std::ostringstream stream;
 	stream << width << " x " << height << " @ " << spacing;
 	return stream.str();
+}
+
+std::uint64_t make_edge_key(unsigned int a, unsigned int b)
+{
+	const std::uint32_t min_index = std::min(a, b);
+	const std::uint32_t max_index = std::max(a, b);
+	return (static_cast<std::uint64_t>(min_index) << 32) | static_cast<std::uint64_t>(max_index);
+}
+
+float estimate_reference_spacing(const Cloth& cloth)
+{
+	if (cloth.get_spacing() > 0.0f)
+	{
+		return cloth.get_spacing();
+	}
+
+	const std::vector<Particle>& particles = cloth.get_particles();
+	const std::vector<unsigned int>& indices = cloth.get_indices();
+	if (particles.empty() || indices.size() < 2)
+	{
+		return 0.01f;
+	}
+
+	std::unordered_set<std::uint64_t> visited_edges;
+	visited_edges.reserve(indices.size());
+
+	float edge_length_sum = 0.0f;
+	int edge_count = 0;
+	const auto accumulate_edge = [&](unsigned int a, unsigned int b)
+	{
+		if (a >= particles.size() || b >= particles.size())
+		{
+			return;
+		}
+
+		const std::uint64_t key = make_edge_key(a, b);
+		if (!visited_edges.insert(key).second)
+		{
+			return;
+		}
+
+		edge_length_sum += glm::length(particles[a].position - particles[b].position);
+		++edge_count;
+	};
+
+	for (std::size_t i = 0; i + 2 < indices.size(); i += 3)
+	{
+		accumulate_edge(indices[i], indices[i + 1]);
+		accumulate_edge(indices[i + 1], indices[i + 2]);
+		accumulate_edge(indices[i + 2], indices[i]);
+	}
+
+	return edge_count > 0 ? edge_length_sum / static_cast<float>(edge_count) : 0.01f;
+}
+
+void apply_initial_out_of_plane_jitter(Cloth& cloth)
+{
+	auto& particles = cloth.get_particles();
+	if (particles.empty())
+	{
+		return;
+	}
+
+	const float reference_spacing = estimate_reference_spacing(cloth);
+	const float jitter_amplitude = kInitialJitterScale * std::max(reference_spacing, 0.0001f);
+	if (jitter_amplitude <= 0.0f)
+	{
+		return;
+	}
+
+	static thread_local std::mt19937 rng(std::random_device{}());
+	std::uniform_real_distribution<float> distribution(-jitter_amplitude, jitter_amplitude);
+
+	for (Particle& particle : particles)
+	{
+		particle.position.z += distribution(rng);
+		particle.prev_position = particle.position;
+	}
 }
 
 void pin_grid_top_row(Cloth& cloth)
@@ -108,6 +191,7 @@ ClothObject::ClothObject(std::string display_name, int width, int height, float 
 	, source_kind_(ClothSourceKind::Grid)
 	, cloth_(width, height, spacing)
 {
+	apply_initial_out_of_plane_jitter(cloth_);
 	pin_grid_top_row(cloth_);
 	cache_initial_state();
 	add_component<ClothRenderComponent>(cloth_);
@@ -120,6 +204,7 @@ ClothObject::ClothObject(std::string display_name, const std::filesystem::path& 
 	, source_kind_(ClothSourceKind::Mesh)
 	, cloth_(io::load_cloth(mesh_path))
 {
+	apply_initial_out_of_plane_jitter(cloth_);
 	pin_highest_particles(cloth_);
 	cache_initial_state();
 	add_component<ClothRenderComponent>(cloth_);

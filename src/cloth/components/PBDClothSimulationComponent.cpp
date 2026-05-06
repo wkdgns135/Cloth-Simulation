@@ -19,37 +19,47 @@ void PBDClothSimulationComponent::update_simulation(float delta_time)
 	}
 
 	rebuild_constraints_if_needed();
-	integrate(delta_time);
+	
+	const int pass_count = solver_pass_count();
+	const float substep_delta_time = delta_time / static_cast<float>(pass_count);
+	prepare_self_collision_candidates(delta_time);
 
-	const int iterations = constraint_iterations();
-	const int solver_passes = std::max(1, iterations);
-	const float stretch_stiffness_per_iteration = per_iteration_stiffness(stretch_stiffness());
-	const float bend_stiffness_per_iteration = per_iteration_stiffness(bend_stiffness());
-
-	for (int i = 0; i < solver_passes; ++i)
+	for (int i = 0; i < pass_count; ++i)
 	{
-		if (i < iterations)
-		{
-			solve_distance_constraints(stretch_stiffness_per_iteration);
-			solve_bending_constraints(bend_stiffness_per_iteration);
-		}
-
+		integrate(substep_delta_time);
 		solve_collision_objects();
+		solve_constraints();
+		solve_self_collision();
+	}
+
+	clear_external_acceleration();
+}
+
+float PBDClothSimulationComponent::stiffness_for_constraint(const DistanceConstraint& constraint) const
+{
+	switch (constraint.kind)
+	{
+	case DistanceConstraint::Kind::Stretch:
+		return per_iteration_stiffness(stretch_stiffness());
+	case DistanceConstraint::Kind::Shear:
+		return per_iteration_stiffness(shear_stiffness());
+	case DistanceConstraint::Kind::Bend:
+	default:
+		return per_iteration_stiffness(bend_stiffness());
 	}
 }
 
-void PBDClothSimulationComponent::solve_distance_constraints(float stiffness_per_iteration)
+void PBDClothSimulationComponent::solve_constraints()
 {
 	for (const DistanceConstraint& constraint : distance_constraints())
 	{
-		solve_distance_constraint(constraint, stiffness_per_iteration);
+		solve_distance_constraint(constraint);
 	}
 }
 
-void PBDClothSimulationComponent::solve_distance_constraint(
-	const DistanceConstraint& constraint,
-	float stiffness_per_iteration)
+void PBDClothSimulationComponent::solve_distance_constraint(const DistanceConstraint& constraint)
 {
+	const float stiffness_per_iteration = stiffness_for_constraint(constraint);
 	if (stiffness_per_iteration <= 0.0f)
 	{
 		return;
@@ -70,41 +80,4 @@ void PBDClothSimulationComponent::solve_distance_constraint(
 
 	particle_a.position += evaluation.inverse_mass_a * correction;
 	particle_b.position -= evaluation.inverse_mass_b * correction;
-}
-
-void PBDClothSimulationComponent::solve_bending_constraints(float stiffness_per_iteration)
-{
-	for (const BendingConstraint& constraint : bending_constraints())
-	{
-		solve_bending_constraint(constraint, stiffness_per_iteration);
-	}
-}
-
-void PBDClothSimulationComponent::solve_bending_constraint(
-	const BendingConstraint& constraint,
-	float stiffness_per_iteration)
-{
-	if (stiffness_per_iteration <= 0.0f)
-	{
-		return;
-	}
-
-	BendingConstraintEvaluation evaluation;
-	if (!evaluate_bending_constraint(constraint, evaluation))
-	{
-		return;
-	}
-
-	auto& particles = cloth().get_particles();
-	Particle& particle_1 = particles[constraint.particle_1];
-	Particle& particle_2 = particles[constraint.particle_2];
-	Particle& particle_3 = particles[constraint.particle_3];
-	Particle& particle_4 = particles[constraint.particle_4];
-
-	const float scale = -stiffness_per_iteration * evaluation.constraint_value / evaluation.denominator;
-
-	particle_1.position += evaluation.inverse_mass_1 * scale * evaluation.q1;
-	particle_2.position += evaluation.inverse_mass_2 * scale * evaluation.q2;
-	particle_3.position += evaluation.inverse_mass_3 * scale * evaluation.q3;
-	particle_4.position += evaluation.inverse_mass_4 * scale * evaluation.q4;
 }

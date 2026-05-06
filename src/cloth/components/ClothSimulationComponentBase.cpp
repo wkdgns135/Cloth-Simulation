@@ -4,6 +4,7 @@
 #include <cmath>
 #include <cstdint>
 #include <unordered_map>
+#include <unordered_set>
 
 #include <glm/geometric.hpp>
 #include <glm/gtc/matrix_inverse.hpp>
@@ -25,104 +26,27 @@ std::uint64_t make_edge_key(int particle_a, int particle_b)
 	return (static_cast<std::uint64_t>(min_vertex) << 32) | static_cast<std::uint64_t>(max_vertex);
 }
 
-float cot_theta(const glm::vec3& first, const glm::vec3& second)
+ClothSimulationComponentBase::SpatialHashCell make_spatial_hash_cell(const glm::vec3& position, float cell_size)
 {
-	const float sin_theta = glm::length(glm::cross(first, second));
-	if (sin_theta <= kConstraintLengthThreshold)
-	{
-		return 0.0f;
-	}
-
-	return glm::dot(first, second) / sin_theta;
-}
-
-float& matrix_entry(std::array<float, 16>& matrix, int row, int column)
-{
-	return matrix[static_cast<std::size_t>(row * 4 + column)];
-}
-
-float matrix_entry(const std::array<float, 16>& matrix, int row, int column)
-{
-	return matrix[static_cast<std::size_t>(row * 4 + column)];
-}
-
-bool is_valid_q_matrix(const std::array<float, 16>& q_matrix)
-{
-	for (const float value : q_matrix)
-	{
-		if (!std::isfinite(value))
-		{
-			return false;
-		}
-	}
-
-	return true;
-}
-
-bool build_isometric_bending_matrix(
-	const glm::vec3& particle_1,
-	const glm::vec3& particle_2,
-	const glm::vec3& particle_3,
-	const glm::vec3& particle_4,
-	std::array<float, 16>& q_matrix)
-{
-	q_matrix.fill(0.0f);
-
-	const glm::vec3 vertices[4] = {
-		particle_3,
-		particle_4,
-		particle_1,
-		particle_2,
+	const glm::vec3 scaled_position = glm::floor(position / cell_size);
+	return {
+		static_cast<int>(scaled_position.x),
+		static_cast<int>(scaled_position.y),
+		static_cast<int>(scaled_position.z),
 	};
-
-	const glm::vec3 edge_0 = vertices[1] - vertices[0];
-	const glm::vec3 edge_1 = vertices[2] - vertices[0];
-	const glm::vec3 edge_2 = vertices[3] - vertices[0];
-	const glm::vec3 edge_3 = vertices[2] - vertices[1];
-	const glm::vec3 edge_4 = vertices[3] - vertices[1];
-
-	const float c01 = cot_theta(edge_0, edge_1);
-	const float c02 = cot_theta(edge_0, edge_2);
-	const float c03 = cot_theta(-edge_0, edge_3);
-	const float c04 = cot_theta(-edge_0, edge_4);
-
-	const float area_0 = 0.5f * glm::length(glm::cross(edge_0, edge_1));
-	const float area_1 = 0.5f * glm::length(glm::cross(edge_0, edge_2));
-	const float area_sum = area_0 + area_1;
-	if (area_sum <= kConstraintLengthThreshold)
-	{
-		return false;
-	}
-
-	const float coefficient = -3.0f / (2.0f * area_sum);
-	const float k_values[4] = {
-		c03 + c04,
-		c01 + c02,
-		-c01 - c03,
-		-c02 - c04,
-	};
-	const float scaled_k_values[4] = {
-		coefficient * k_values[0],
-		coefficient * k_values[1],
-		coefficient * k_values[2],
-		coefficient * k_values[3],
-	};
-
-	for (int row = 0; row < 4; ++row)
-	{
-		for (int column = 0; column < row; ++column)
-		{
-			const float value = k_values[row] * scaled_k_values[column];
-			matrix_entry(q_matrix, row, column) = value;
-			matrix_entry(q_matrix, column, row) = value;
-		}
-
-		matrix_entry(q_matrix, row, row) = k_values[row] * scaled_k_values[row];
-	}
-
-	return is_valid_q_matrix(q_matrix);
+}
 }
 
+std::size_t ClothSimulationComponentBase::SpatialHashCellHasher::operator()(const SpatialHashCell& cell) const
+{
+	const std::size_t x = std::hash<int>{}(cell[0]);
+	const std::size_t y = std::hash<int>{}(cell[1]);
+	const std::size_t z = std::hash<int>{}(cell[2]);
+
+	std::size_t seed = x;
+	seed ^= y + 0x9e3779b9u + (seed << 6) + (seed >> 2);
+	seed ^= z + 0x9e3779b9u + (seed << 6) + (seed >> 2);
+	return seed;
 }
 
 ClothSimulationComponentBase::ClothSimulationComponentBase(Cloth& cloth)
@@ -136,11 +60,28 @@ void ClothSimulationComponentBase::start()
 	rebuild_constraints();
 }
 
+int ClothSimulationComponentBase::solver_pass_count() const
+{
+	return std::max(1, substeps()) * std::max(1, constraint_iterations());
+}
+
+float ClothSimulationComponentBase::max_self_collision_displacement_per_pass() const
+{
+	if (!self_collision_enabled())
+	{
+		return 0.0f;
+	}
+
+	return 0.2f * collision_margin();
+}
+
 void ClothSimulationComponentBase::integrate(float delta_time)
 {
 	auto& particles = cloth_.get_particles();
 	const glm::vec3 acceleration = delta_time * delta_time * (gravity() + external_acceleration_);
-	external_acceleration_ = glm::vec3(0.0f);
+	const float damping_per_substep =
+		std::pow(std::clamp(damping(), 0.0f, 1.0f), 1.0f / static_cast<float>(solver_pass_count()));
+	const float max_displacement = max_self_collision_displacement_per_pass();
 
 	for (Particle& particle : particles)
 	{
@@ -150,16 +91,26 @@ void ClothSimulationComponentBase::integrate(float delta_time)
 			continue;
 		}
 
-		const glm::vec3 velocity = (particle.position - particle.prev_position) * damping();
+		glm::vec3 displacement = (particle.position - particle.prev_position) * damping_per_substep + acceleration;
+		if (max_displacement > kConstraintLengthThreshold)
+		{
+			const float displacement_length = glm::length(displacement);
+			if (displacement_length > max_displacement)
+			{
+				displacement *= max_displacement / displacement_length;
+			}
+		}
+
 		particle.prev_position = particle.position;
-		particle.position += velocity + acceleration;
+		particle.position += displacement;
 	}
 }
 
 bool ClothSimulationComponentBase::rebuild_constraints()
 {
 	distance_constraints_.clear();
-	bending_constraints_.clear();
+	rest_positions_.clear();
+	self_collision_candidate_ids_.clear();
 	cached_topology_revision_ = cloth_.get_topology_revision();
 
 	const auto& particles = cloth_.get_particles();
@@ -167,72 +118,154 @@ bool ClothSimulationComponentBase::rebuild_constraints()
 
 	if (particles.empty() || indices.size() < 3 || indices.size() % 3 != 0)
 	{
+		for (const Particle& particle : particles)
+		{
+			rest_positions_.push_back(particle.position);
+		}
+		self_collision_candidate_ids_.assign(particles.size(), {});
 		return false;
 	}
 
-	struct EdgeInfo
+	rest_positions_.reserve(particles.size());
+	std::unordered_set<std::uint64_t> added_distance_constraint_keys;
+	added_distance_constraint_keys.reserve(indices.size() * 2);
+
+	const auto add_distance_constraint = [&](int particle_a, int particle_b, DistanceConstraint::Kind kind)
 	{
-		int edge_a = 0;
-		int edge_b = 0;
-		int opposite = 0;
+		if (particle_a < 0 || particle_b < 0
+			|| particle_a >= static_cast<int>(particles.size())
+			|| particle_b >= static_cast<int>(particles.size())
+			|| particle_a == particle_b)
+		{
+			return;
+		}
+
+		const std::uint64_t key = make_edge_key(particle_a, particle_b);
+		if (!added_distance_constraint_keys.insert(key).second)
+		{
+			return;
+		}
+
+		const float rest_length = glm::length(particles[particle_a].position - particles[particle_b].position);
+		distance_constraints_.push_back({ particle_a, particle_b, rest_length, kind });
 	};
 
-	std::unordered_map<std::uint64_t, EdgeInfo> first_triangle_per_edge;
-	first_triangle_per_edge.reserve(indices.size());
-	distance_constraints_.reserve(indices.size());
-	bending_constraints_.reserve(indices.size() / 3);
+	const int grid_width = cloth_.get_width();
+	const int grid_height = cloth_.get_height();
+	const bool has_grid_layout =
+		grid_width > 0
+		&& grid_height > 0
+		&& static_cast<std::size_t>(grid_width * grid_height) == particles.size();
 
-	const auto add_edge = [&](int edge_a, int edge_b, int opposite)
+	if (has_grid_layout)
 	{
-		const std::uint64_t key = make_edge_key(edge_a, edge_b);
-		const auto [it, inserted] = first_triangle_per_edge.emplace(key, EdgeInfo{ edge_a, edge_b, opposite });
-
-		if (inserted)
+		struct GridConstraintPattern
 		{
-			const float rest_length = glm::length(particles[edge_a].position - particles[edge_b].position);
-			distance_constraints_.push_back({ edge_a, edge_b, rest_length });
-			return;
-		}
+			int offset_ax = 0;
+			int offset_ay = 0;
+			int offset_bx = 0;
+			int offset_by = 0;
+			DistanceConstraint::Kind kind = DistanceConstraint::Kind::Stretch;
+		};
 
-		const EdgeInfo& first = it->second;
-		if (first.opposite == opposite)
+		const GridConstraintPattern patterns[] = {
+			{ 0, 0, 0, 1, DistanceConstraint::Kind::Stretch },
+			{ 0, 0, 1, 0, DistanceConstraint::Kind::Stretch },
+			{ 0, 0, 1, 1, DistanceConstraint::Kind::Shear },
+			{ 0, 1, 1, 0, DistanceConstraint::Kind::Shear },
+			{ 0, 0, 0, 2, DistanceConstraint::Kind::Bend },
+			{ 0, 0, 2, 0, DistanceConstraint::Kind::Bend },
+		};
+
+		const auto grid_index = [&](int x, int y)
 		{
-			return;
-		}
+			return y * grid_width + x;
+		};
 
-		std::array<float, 16> q_matrix;
-		if (!build_isometric_bending_matrix(
-			particles[first.opposite].position,
-			particles[opposite].position,
-			particles[first.edge_a].position,
-			particles[first.edge_b].position,
-			q_matrix))
+		for (const GridConstraintPattern& pattern : patterns)
 		{
-			return;
+			for (int y = 0; y < grid_height; ++y)
+			{
+				for (int x = 0; x < grid_width; ++x)
+				{
+					const int ax = x + pattern.offset_ax;
+					const int ay = y + pattern.offset_ay;
+					const int bx = x + pattern.offset_bx;
+					const int by = y + pattern.offset_by;
+					if (ax < 0 || ay < 0 || bx < 0 || by < 0
+						|| ax >= grid_width || ay >= grid_height
+						|| bx >= grid_width || by >= grid_height)
+					{
+						continue;
+					}
+
+					add_distance_constraint(grid_index(ax, ay), grid_index(bx, by), pattern.kind);
+				}
+			}
 		}
-
-		bending_constraints_.push_back({ first.opposite, opposite, first.edge_a, first.edge_b, q_matrix });
-	};
-
-	for (std::size_t i = 0; i + 2 < indices.size(); i += 3)
+	}
+	else
 	{
-		const int particle_0 = static_cast<int>(indices[i]);
-		const int particle_1 = static_cast<int>(indices[i + 1]);
-		const int particle_2 = static_cast<int>(indices[i + 2]);
-
-		if (particle_0 < 0 || particle_1 < 0 || particle_2 < 0
-			|| particle_0 >= static_cast<int>(particles.size())
-			|| particle_1 >= static_cast<int>(particles.size())
-			|| particle_2 >= static_cast<int>(particles.size()))
+		struct EdgeInfo
 		{
-			continue;
-		}
+			int edge_a = 0;
+			int edge_b = 0;
+			int opposite = 0;
+		};
 
-		add_edge(particle_0, particle_1, particle_2);
-		add_edge(particle_1, particle_2, particle_0);
-		add_edge(particle_2, particle_0, particle_1);
+		std::unordered_map<std::uint64_t, EdgeInfo> first_triangle_per_edge;
+		first_triangle_per_edge.reserve(indices.size());
+
+		const auto process_shared_edge = [&](int edge_a, int edge_b, int opposite)
+		{
+			const std::uint64_t key = make_edge_key(edge_a, edge_b);
+			const auto [it, inserted] = first_triangle_per_edge.emplace(key, EdgeInfo{ edge_a, edge_b, opposite });
+			if (inserted || it->second.opposite == opposite)
+			{
+				return;
+			}
+
+			const EdgeInfo& first = it->second;
+			const float shared_edge_length = glm::length(particles[first.edge_a].position - particles[first.edge_b].position);
+			const float opposite_distance = glm::length(particles[first.opposite].position - particles[opposite].position);
+			const DistanceConstraint::Kind kind =
+				shared_edge_length > kConstraintLengthThreshold && opposite_distance <= 1.5f * shared_edge_length
+				? DistanceConstraint::Kind::Shear
+				: DistanceConstraint::Kind::Bend;
+
+			add_distance_constraint(first.opposite, opposite, kind);
+		};
+
+		for (std::size_t i = 0; i + 2 < indices.size(); i += 3)
+		{
+			const int particle_0 = static_cast<int>(indices[i]);
+			const int particle_1 = static_cast<int>(indices[i + 1]);
+			const int particle_2 = static_cast<int>(indices[i + 2]);
+
+			if (particle_0 < 0 || particle_1 < 0 || particle_2 < 0
+				|| particle_0 >= static_cast<int>(particles.size())
+				|| particle_1 >= static_cast<int>(particles.size())
+				|| particle_2 >= static_cast<int>(particles.size()))
+			{
+				continue;
+			}
+
+			add_distance_constraint(particle_0, particle_1, DistanceConstraint::Kind::Stretch);
+			add_distance_constraint(particle_1, particle_2, DistanceConstraint::Kind::Stretch);
+			add_distance_constraint(particle_2, particle_0, DistanceConstraint::Kind::Stretch);
+
+			process_shared_edge(particle_0, particle_1, particle_2);
+			process_shared_edge(particle_1, particle_2, particle_0);
+			process_shared_edge(particle_2, particle_0, particle_1);
+		}
 	}
 
+	for (const Particle& particle : particles)
+	{
+		rest_positions_.push_back(particle.position);
+	}
+
+	self_collision_candidate_ids_.assign(particles.size(), {});
 	return true;
 }
 
@@ -279,93 +312,10 @@ bool ClothSimulationComponentBase::evaluate_distance_constraint(
 	return true;
 }
 
-bool ClothSimulationComponentBase::evaluate_bending_constraint(
-	const BendingConstraint& constraint,
-	BendingConstraintEvaluation& evaluation) const
-{
-	const auto& particles = cloth_.get_particles();
-	const Particle& particle_1 = particles[constraint.particle_1];
-	const Particle& particle_2 = particles[constraint.particle_2];
-	const Particle& particle_3 = particles[constraint.particle_3];
-	const Particle& particle_4 = particles[constraint.particle_4];
-
-	evaluation.inverse_mass_1 = particle_1.is_fixed ? 0.0f : 1.0f;
-	evaluation.inverse_mass_2 = particle_2.is_fixed ? 0.0f : 1.0f;
-	evaluation.inverse_mass_3 = particle_3.is_fixed ? 0.0f : 1.0f;
-	evaluation.inverse_mass_4 = particle_4.is_fixed ? 0.0f : 1.0f;
-
-	if (evaluation.inverse_mass_1 + evaluation.inverse_mass_2 + evaluation.inverse_mass_3 + evaluation.inverse_mass_4 <= 0.0f)
-	{
-		return false;
-	}
-
-	const glm::vec3 stencil_positions[4] = {
-		particle_3.position,
-		particle_4.position,
-		particle_1.position,
-		particle_2.position,
-	};
-	const float inverse_masses[4] = {
-		evaluation.inverse_mass_3,
-		evaluation.inverse_mass_4,
-		evaluation.inverse_mass_1,
-		evaluation.inverse_mass_2,
-	};
-
-	evaluation.constraint_value = 0.0f;
-	for (int column = 0; column < 4; ++column)
-	{
-		for (int row = 0; row < 4; ++row)
-		{
-			evaluation.constraint_value +=
-				matrix_entry(constraint.q_matrix, row, column) *
-				glm::dot(stencil_positions[column], stencil_positions[row]);
-		}
-	}
-	evaluation.constraint_value *= 0.5f;
-
-	if (std::abs(evaluation.constraint_value) <= kConstraintLengthThreshold)
-	{
-		return false;
-	}
-
-	glm::vec3 gradients[4] = {
-		glm::vec3(0.0f),
-		glm::vec3(0.0f),
-		glm::vec3(0.0f),
-		glm::vec3(0.0f),
-	};
-
-	for (int column = 0; column < 4; ++column)
-	{
-		for (int row = 0; row < 4; ++row)
-		{
-			gradients[row] += matrix_entry(constraint.q_matrix, row, column) * stencil_positions[column];
-		}
-	}
-
-	evaluation.q1 = gradients[2];
-	evaluation.q2 = gradients[3];
-	evaluation.q3 = gradients[0];
-	evaluation.q4 = gradients[1];
-
-	const float weighted_q_norm =
-		inverse_masses[0] * glm::dot(gradients[0], gradients[0]) +
-		inverse_masses[1] * glm::dot(gradients[1], gradients[1]) +
-		inverse_masses[2] * glm::dot(gradients[2], gradients[2]) +
-		inverse_masses[3] * glm::dot(gradients[3], gradients[3]);
-	if (weighted_q_norm <= kConstraintLengthThreshold)
-	{
-		return false;
-	}
-
-	evaluation.denominator = weighted_q_norm;
-	return evaluation.denominator > kConstraintLengthThreshold;
-}
-
 float ClothSimulationComponentBase::per_iteration_stiffness(float stiffness) const
 {
-	if (constraint_iterations() <= 0)
+	const int total_solver_applications = solver_pass_count();
+	if (total_solver_applications <= 0)
 	{
 		return 0.0f;
 	}
@@ -376,12 +326,112 @@ float ClothSimulationComponentBase::per_iteration_stiffness(float stiffness) con
 		return clamped_stiffness;
 	}
 
-	return 1.0f - std::pow(1.0f - clamped_stiffness, 1.0f / static_cast<float>(constraint_iterations()));
+	return 1.0f - std::pow(1.0f - clamped_stiffness, 1.0f / static_cast<float>(total_solver_applications));
+}
+
+void ClothSimulationComponentBase::build_spatial_hash()
+{
+	spatial_hash_.clear();
+
+	if (!self_collision_enabled())
+	{
+		return;
+	}
+
+	const auto& particles = cloth_.get_particles();
+	if (particles.empty())
+	{
+		return;
+	}
+
+	const float cell_size = collision_margin();
+	if (cell_size <= kConstraintLengthThreshold)
+	{
+		return;
+	}
+
+	spatial_hash_.reserve(particles.size());
+
+	for (std::size_t i = 0; i < particles.size(); ++i)
+	{
+		const SpatialHashCell cell = make_spatial_hash_cell(particles[i].position, cell_size);
+		spatial_hash_[cell].push_back(static_cast<unsigned int>(i));
+	}
+}
+
+void ClothSimulationComponentBase::prepare_self_collision_candidates(float frame_delta_time)
+{
+	static_cast<void>(frame_delta_time);
+
+	self_collision_candidate_ids_.clear();
+
+	const auto& particles = cloth_.get_particles();
+	self_collision_candidate_ids_.resize(particles.size());
+	if (!self_collision_enabled() || particles.empty() || rest_positions_.size() != particles.size())
+	{
+		return;
+	}
+
+	build_spatial_hash();
+	if (spatial_hash_.empty())
+	{
+		return;
+	}
+
+	const float collision_distance = collision_margin();
+	const float max_travel_distance =
+		max_self_collision_displacement_per_pass() * static_cast<float>(solver_pass_count());
+	const float max_travel_distance_squared = max_travel_distance * max_travel_distance;
+
+	for (std::size_t particle_index = 0; particle_index < particles.size(); ++particle_index)
+	{
+		const Particle& particle = particles[particle_index];
+		const SpatialHashCell min_cell = make_spatial_hash_cell(
+			particle.position - glm::vec3(max_travel_distance),
+			collision_distance);
+		const SpatialHashCell max_cell = make_spatial_hash_cell(
+			particle.position + glm::vec3(max_travel_distance),
+			collision_distance);
+
+		auto& candidates = self_collision_candidate_ids_[particle_index];
+		for (int z = min_cell[2]; z <= max_cell[2]; ++z)
+		{
+			for (int y = min_cell[1]; y <= max_cell[1]; ++y)
+			{
+				for (int x = min_cell[0]; x <= max_cell[0]; ++x)
+				{
+					const SpatialHashCell query_cell = { x, y, z };
+					const auto bucket_it = spatial_hash_.find(query_cell);
+					if (bucket_it == spatial_hash_.end())
+					{
+						continue;
+					}
+
+					for (const unsigned int candidate_index_unsigned : bucket_it->second)
+					{
+						const std::size_t candidate_index = static_cast<std::size_t>(candidate_index_unsigned);
+						if (candidate_index >= particle_index)
+						{
+							continue;
+						}
+
+						const glm::vec3 delta = particle.position - particles[candidate_index].position;
+						if (glm::dot(delta, delta) > max_travel_distance_squared)
+						{
+							continue;
+						}
+
+						candidates.push_back(candidate_index_unsigned);
+					}
+				}
+			}
+		}
+	}
 }
 
 void ClothSimulationComponentBase::solve_collision_objects()
 {
-	if (!collision_enabled())
+	if (!external_collision_enabled())
 	{
 		return;
 	}
@@ -427,6 +477,89 @@ void ClothSimulationComponentBase::solve_collision_objects()
 		{
 			particle.position = world_to_local_point(world_position);
 			particle.prev_position = world_to_local_point(world_prev_position);
+		}
+	}
+}
+
+void ClothSimulationComponentBase::solve_self_collision()
+{
+	if (!self_collision_enabled())
+	{
+		return;
+	}
+
+	const float collision_distance = collision_margin();
+	if (collision_distance <= kConstraintLengthThreshold || self_collision_candidate_ids_.empty())
+	{
+		return;
+	}
+
+	auto& particles = cloth_.get_particles();
+	if (rest_positions_.size() != particles.size())
+	{
+		return;
+	}
+
+	const float collision_distance_squared = collision_distance * collision_distance;
+
+	for (std::size_t particle_index = 0; particle_index < particles.size(); ++particle_index)
+	{
+		Particle& particle = particles[particle_index];
+		const auto& candidates = self_collision_candidate_ids_[particle_index];
+
+		for (const unsigned int neighbor_index_unsigned : candidates)
+		{
+			const std::size_t neighbor_index = static_cast<std::size_t>(neighbor_index_unsigned);
+			Particle& neighbor = particles[neighbor_index];
+			const float inverse_mass_a = particle.is_fixed ? 0.0f : 1.0f;
+			const float inverse_mass_b = neighbor.is_fixed ? 0.0f : 1.0f;
+			const float inverse_mass_sum = inverse_mass_a + inverse_mass_b;
+			if (inverse_mass_sum <= 0.0f)
+			{
+				continue;
+			}
+
+			glm::vec3 delta = neighbor.position - particle.position;
+			float distance_squared = glm::dot(delta, delta);
+			if (distance_squared >= collision_distance_squared)
+			{
+				continue;
+			}
+
+			if (distance_squared <= kConstraintLengthThreshold * kConstraintLengthThreshold)
+			{
+				delta = neighbor.prev_position - particle.prev_position;
+				distance_squared = glm::dot(delta, delta);
+				if (distance_squared <= kConstraintLengthThreshold * kConstraintLengthThreshold)
+				{
+					continue;
+				}
+			}
+
+			const glm::vec3 rest_delta = rest_positions_[neighbor_index] - rest_positions_[particle_index];
+			const float rest_distance_squared = glm::dot(rest_delta, rest_delta);
+			if (distance_squared > rest_distance_squared)
+			{
+				continue;
+			}
+
+			float minimum_distance = collision_distance;
+			if (rest_distance_squared < collision_distance_squared)
+			{
+				minimum_distance = std::sqrt(rest_distance_squared);
+			}
+
+			const float distance = std::sqrt(distance_squared);
+			if (distance >= minimum_distance)
+			{
+				continue;
+			}
+
+			const glm::vec3 normal = delta / distance;
+			const glm::vec3 correction = (minimum_distance - distance) * normal;
+
+			particle.position -= (inverse_mass_a / inverse_mass_sum) * correction;
+			neighbor.position += (inverse_mass_b / inverse_mass_sum) * correction;
 		}
 	}
 }
