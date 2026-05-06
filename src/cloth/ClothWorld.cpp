@@ -53,7 +53,7 @@ ClothWorld::ClothWorld()
 	main_directional_light_object_->set_ambient_strength(0.16f);
 	main_directional_light_object_->set_diffuse_strength(1.15f);
 
-	ClothObject& initial_cloth = create_mesh_cloth("asset/test_cloth_patch.obj", ClothSolverKind::PBD);
+	ClothObject& initial_cloth = create_grid_cloth(32, 32, 0.05f, ClothSolverKind::PBD);
 	initial_cloth.set_object_world_position(glm::vec3(0.0f, 0.0f, 0.0f));
 
 	PlaneObject& floor_object = create_object<PlaneObject>();

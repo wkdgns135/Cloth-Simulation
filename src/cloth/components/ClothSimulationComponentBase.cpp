@@ -18,12 +18,59 @@
 namespace
 {
 constexpr float kConstraintLengthThreshold = 0.000001f;
+constexpr float kInitialCollisionMarginScale = 1.5f;
 
 std::uint64_t make_edge_key(int particle_a, int particle_b)
 {
 	const std::uint32_t min_vertex = static_cast<std::uint32_t>(std::min(particle_a, particle_b));
 	const std::uint32_t max_vertex = static_cast<std::uint32_t>(std::max(particle_a, particle_b));
 	return (static_cast<std::uint64_t>(min_vertex) << 32) | static_cast<std::uint64_t>(max_vertex);
+}
+
+float estimate_reference_spacing(const Cloth& cloth)
+{
+	if (cloth.get_spacing() > kConstraintLengthThreshold)
+	{
+		return cloth.get_spacing();
+	}
+
+	const std::vector<Particle>& particles = cloth.get_particles();
+	const std::vector<unsigned int>& indices = cloth.get_indices();
+	if (particles.empty() || indices.size() < 2)
+	{
+		return 0.0f;
+	}
+
+	std::unordered_set<std::uint64_t> visited_edges;
+	visited_edges.reserve(indices.size());
+
+	float edge_length_sum = 0.0f;
+	int edge_count = 0;
+	const auto accumulate_edge = [&](unsigned int a, unsigned int b)
+	{
+		if (a >= particles.size() || b >= particles.size())
+		{
+			return;
+		}
+
+		const std::uint64_t key = make_edge_key(static_cast<int>(a), static_cast<int>(b));
+		if (!visited_edges.insert(key).second)
+		{
+			return;
+		}
+
+		edge_length_sum += glm::length(particles[a].position - particles[b].position);
+		++edge_count;
+	};
+
+	for (std::size_t i = 0; i + 2 < indices.size(); i += 3)
+	{
+		accumulate_edge(indices[i], indices[i + 1]);
+		accumulate_edge(indices[i + 1], indices[i + 2]);
+		accumulate_edge(indices[i + 2], indices[i]);
+	}
+
+	return edge_count > 0 ? edge_length_sum / static_cast<float>(edge_count) : 0.0f;
 }
 
 ClothSimulationComponentBase::SpatialHashCell make_spatial_hash_cell(const glm::vec3& position, float cell_size)
@@ -53,6 +100,12 @@ ClothSimulationComponentBase::ClothSimulationComponentBase(Cloth& cloth)
 	: cloth_(cloth)
 {
 	set_display_name("Cloth Simulation");
+
+	const float reference_spacing = estimate_reference_spacing(cloth_);
+	if (reference_spacing > kConstraintLengthThreshold)
+	{
+		set_collision_margin(reference_spacing * kInitialCollisionMarginScale);
+	}
 }
 
 void ClothSimulationComponentBase::start()
