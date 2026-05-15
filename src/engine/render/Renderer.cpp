@@ -8,6 +8,21 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
 
+namespace
+{
+GLenum draw_mode_for_topology(RenderPrimitiveTopology topology)
+{
+	switch (topology)
+	{
+	case RenderPrimitiveTopology::Lines:
+		return GL_LINES;
+	case RenderPrimitiveTopology::Triangles:
+	default:
+		return GL_TRIANGLES;
+	}
+}
+}
+
 Renderer::Renderer()
 	: vbo_(QOpenGLBuffer::VertexBuffer)
 	, ebo_(QOpenGLBuffer::IndexBuffer)
@@ -186,5 +201,9 @@ void Renderer::draw_object(const RenderObject& object, const RenderScene& scene,
 	glUniform1f(program_.uniformLocation("u_diffuse_strength"), scene.directional_light.diffuse_strength);
 	glUniform4fv(program_.uniformLocation("u_material_color"), 1, glm::value_ptr(object.material.base_color));
 
-	glDrawElements(GL_TRIANGLES, static_cast<GLsizei>(object.mesh.indices.size()), GL_UNSIGNED_INT, nullptr);
+	glDrawElements(
+		draw_mode_for_topology(object.primitive_topology),
+		static_cast<GLsizei>(object.mesh.indices.size()),
+		GL_UNSIGNED_INT,
+		nullptr);
 }

@@ -35,6 +35,12 @@ struct MeshData
 	std::vector<unsigned int> indices;
 };
 
+enum class RenderPrimitiveTopology
+{
+	Triangles,
+	Lines,
+};
+
 struct Material
 {
 	glm::vec4 base_color = glm::vec4(1.0f);
@@ -45,6 +51,7 @@ struct RenderObject
 	MeshData mesh;
 	glm::mat4 transform = glm::mat4(1.0f);
 	Material material;
+	RenderPrimitiveTopology primitive_topology = RenderPrimitiveTopology::Triangles;
 };
 
 struct RenderScene
