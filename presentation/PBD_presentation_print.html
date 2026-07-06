@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>Position Based Dynamics</title>
+<style>
+  :root {
+    --text: #1f2430;
+    --dim: #6b7280;
+    --accent: #2563eb;
+    --accent2: #d97706;
+    --green: #059669;
+    --red: #dc2626;
+    --panel: #f4f6fa;
+    --eq-bg: #f8f9fc;
+    --line: #d7dce6;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  @page { size: 13.333in 7.5in; margin: 0; }
+  html, body { background: #fff; color: var(--text);
+    font-family: "나눔고딕", "NanumGothic", "Malgun Gothic", "맑은 고딕", sans-serif; }
+  .slide {
+    width: 13.333in; height: 7.5in; overflow: hidden;
+    padding: 0.5in 0.85in; display: flex; flex-direction: column;
+    page-break-after: always; position: relative; background: #fff;
+  }
+  .slide:last-child { page-break-after: auto; }
+  h1 { font-size: 34pt; font-weight: 800; font-family: "나눔스퀘어", "NanumSquare", "나눔고딕", "Malgun Gothic", sans-serif; }
+  h2 { font-size: 23pt; font-weight: 800; margin-bottom: 0.28in;
+    border-left: 0.09in solid var(--accent); padding-left: 0.18in;
+    font-family: "나눔스퀘어", "NanumSquare", "나눔고딕", "Malgun Gothic", sans-serif; }
+  h2 .tag { font-size: 11.5pt; color: var(--dim); font-weight: 400; margin-left: 0.15in; }
+  p, li { font-size: 13pt; line-height: 1.62; }
+  ul { list-style: none; }
+  ul li { padding-left: 0.26in; position: relative; margin-bottom: 0.1in; }
+  ul li::before { content: "▸"; color: var(--accent); position: absolute; left: 0; }
+  ul li ul { margin-top: 0.06in; }
+  ul li ul li { font-size: 11.5pt; margin-bottom: 0.03in; color: var(--dim); }
+  ul li ul li::before { content: "–"; color: var(--dim); }
+  .dim { color: var(--dim); }
+  .acc { color: var(--accent); font-weight: 700; }
+  .acc2 { color: var(--accent2); font-weight: 700; }
+  .good { color: var(--green); }
+  .bad { color: var(--red); }
+  code, .mono { font-family: "Cascadia Code", Consolas, monospace; }
+  code { background: var(--eq-bg); border: 1px solid var(--line); padding: 0 0.06in;
+    border-radius: 0.05in; font-size: 0.9em; color: #b45309; }
+
+  .eq {
+    background: var(--eq-bg); border: 1px solid var(--line); border-radius: 0.1in;
+    padding: 0.14in 0.25in; margin: 0.12in 0; font-size: 15pt; text-align: center;
+    font-family: "Cambria Math", Cambria, Georgia, serif; font-style: italic;
+  }
+  .eq .lbl { font-family: "나눔고딕", "Malgun Gothic", sans-serif; font-style: normal;
+    font-size: 9.5pt; color: var(--dim); display: block; margin-bottom: 0.05in; }
+
+  .cols { display: flex; gap: 0.4in; flex: 1; min-height: 0; }
+  .col { flex: 1; min-width: 0; }
+  .panel { background: var(--panel); border-radius: 0.12in; padding: 0.2in 0.24in; }
+  .panel h3 { font-size: 14pt; margin-bottom: 0.12in; }
+  .panel li { font-size: 12pt; }
+
+  table { border-collapse: collapse; width: 100%; font-size: 11.5pt; }
+  th, td { padding: 0.1in 0.14in; text-align: left; border-bottom: 1px solid var(--line); }
+  th { color: var(--accent); font-size: 11pt; }
+  td:first-child { color: var(--dim); }
+
+  .algo {
+    background: var(--eq-bg); border: 1px solid var(--line); border-radius: 0.1in;
+    padding: 0.18in 0.24in; font-family: "Cascadia Code", Consolas, monospace;
+    font-size: 11.5pt; line-height: 1.8; white-space: pre;
+  }
+  .algo .c { color: #9aa3b5; }
+  .algo .k { color: var(--accent); font-weight: 700; }
+  .algo .hl { color: var(--accent2); font-weight: 700; }
+
+  .footer { position: absolute; bottom: 0.22in; left: 0.85in; right: 0.85in;
+    display: flex; justify-content: space-between; font-size: 8.5pt; color: #b7bfce; }
+
+  .title-slide { justify-content: center; }
+  .title-slide .sub { font-size: 15pt; color: var(--accent); margin: 0.22in 0 0.38in; }
+  .title-slide .meta { font-size: 11.5pt; color: var(--dim); line-height: 1.9; }
+
+  svg text { font-family: "나눔고딕", "Malgun Gothic", sans-serif; }
+  .caption { font-size: 9.5pt; color: var(--dim); text-align: center; margin-top: 0.08in; }
+</style>
+</head>
+<body>
+
+<!-- ================= 1. TITLE ================= -->
+<section class="slide title-slide">
+  <h1>Position Based Dynamics</h1>
+  <p class="sub">위치 기반 동역학과 XPBD — 실시간 천(Cloth) 시뮬레이션 구현기</p>
+  <p class="meta">
+    Müller et al., <i>"Position Based Dynamics"</i>, VRIPhys 2006<br>
+    Macklin et al., <i>"XPBD: Position-Based Simulation of Compliant Constrained Dynamics"</i>, MIG 2016<br><br>
+    구현 프로젝트: PBD / XPBD Cloth Simulator (C++17, Qt6, OpenGL)
+  </p>
+</section>
+
+<!-- ================= 2. WHY PBD ================= -->
+<section class="slide">
+  <h2>배경 — 힘 기반 vs 위치 기반 <span class="tag">왜 그래픽스는 PBD를 쓰는가</span></h2>
+  <div class="cols">
+    <div class="col panel">
+      <h3 class="dim">고전적인 힘 기반 접근 (FEM · 다물체 동역학)</h3>
+      <div class="eq" style="font-size:13.5pt">M·ẍ = f<i>ₑₓₜ</i> − f<i>ᵢₙₜ</i>(x, ẋ)</div>
+      <ul>
+        <li>내력 벡터를 조립해 가속도 → 속도 → 위치 순으로 시간적분</li>
+        <li>양해법(중앙차분): <span class="bad">조건부 안정</span> — 천·로프처럼 강성비가 큰 문제는 임계 시간증분 Δt<sub>cr</sub> 이 극도로 작아짐</li>
+        <li>음해법(Newmark 등): 무조건 안정이지만 매 증분마다 Newton–Raphson 반복 + 접선강성 선형계 풀이 → 실시간엔 부담</li>
+      </ul>
+    </div>
+    <div class="col panel" style="border:2px solid var(--accent)">
+      <h3 class="acc">PBD의 발상 (Müller 2006)</h3>
+      <p style="margin-bottom:0.1in; font-size:12.5pt">힘·가속도 단계를 건너뛰고 <b>절점 위치를 직접 수정</b>한다.</p>
+      <ul>
+        <li>구속조건 <span class="mono">C(x) = 0</span> 을 만족하도록 위치를 <b>투영(projection)</b></li>
+        <li>속도는 위치 변화로부터 역산 → <span class="good">무조건 안정, 발산 없음</span></li>
+        <li>전역 강성행렬 조립·선형계 풀이가 없음 → 실시간·병렬화에 적합</li>
+        <li>게임·영화 VFX의 사실상 표준 (NVIDIA PhysX, FleX 등)</li>
+      </ul>
+    </div>
+  </div>
+  <div class="footer"><span>Position Based Dynamics</span><span>2 / 9</span></div>
+</section>
+
+<!-- ================= 3. PBD LOOP ================= -->
+<section class="slide">
+  <h2>PBD 알고리즘 <span class="tag">Müller et al. 2006, Algorithm 1</span></h2>
+  <div class="cols">
+    <div class="col" style="flex:1.15">
+      <div class="algo"><span class="c">// 매 시간증분 Δt 마다</span>
+<span class="k">1</span>  v ← v + Δt·w·f_ext       <span class="c">// 외력만 적분 (중력 등)</span>
+<span class="k">2</span>  p ← x + Δt·v             <span class="c">// 예측 위치 (explicit)</span>
+<span class="k">3</span>  <span class="k">loop</span> n회:
+       <span class="hl">projectConstraints(C₁…C_M, p)</span>
+<span class="c">                            // 위치를 직접 보정</span>
+<span class="k">4</span>  v ← (p − x) / Δt         <span class="c">// 속도를 역산</span>
+<span class="k">5</span>  x ← p</div>
+      <p class="caption">w = 1/m (역질량). 고정 경계조건은 w = 0 으로 두면 자동 처리.</p>
+    </div>
+    <div class="col panel">
+      <h3>동역학 관점에서 보면</h3>
+      <ul>
+        <li>1–2단계: 반-암시적(semi-implicit) Euler 예측자</li>
+        <li>3단계: 예측 위치를 구속 다양체 <span class="mono">C(x)=0</span> 위로 사영 —
+          <b>구속을 구속력이 아니라 기하학적 보정으로 처리</b></li>
+        <li>4단계: <span class="mono">v = Δx/Δt</span> — Verlet 계열과 동일한 구조</li>
+        <li>구속을 하나씩 순차 처리 = <b>비선형 Gauss–Seidel</b> 반복
+          <ul><li>전역 행렬 조립 없이 구속 단위의 국소 갱신만 수행</li></ul></li>
+      </ul>
+    </div>
+  </div>
+  <div class="footer"><span>Position Based Dynamics</span><span>3 / 9</span></div>
+</section>
+
+<!-- ================= 4. CONSTRAINT PROJECTION ================= -->
+<section class="slide">
+  <h2>구속 투영 (Constraint Projection)</h2>
+  <div class="cols">
+    <div class="col" style="flex:1.2; display:flex; flex-direction:column; justify-content:center">
+      <p>구속 <span class="mono">C(p) = 0</span> 을 1차(선형화) 근사로 풀되, 보정 방향은 <b>∇C 방향</b>, 크기는 <b>질량 가중</b>:</p>
+      <div class="eq">
+        <span class="lbl">스칼라 계수 — 라그랑주 승수의 1회 갱신에 해당</span>
+        s = C(p) / Σⱼ wⱼ·|∇ⱼC|²
+      </div>
+      <div class="eq">
+        <span class="lbl">각 절점(입자)의 위치 보정</span>
+        Δpᵢ = −s·wᵢ·∇ᵢC
+      </div>
+      <p class="dim" style="font-size:11pt">보정이 ∇C 방향 + 질량 가중이므로
+        <b>선운동량·각운동량이 보존</b>된다 — 내부 구속의 처리가 가상의 외력(반력 불균형)을 만들지 않음.</p>
+    </div>
+    <div class="col panel">
+      <h3>예: 거리 구속 (천의 기본 요소)</h3>
+      <div class="eq" style="font-size:13pt">C(p₁, p₂) = |p₁ − p₂| − d</div>
+      <div class="eq" style="font-size:12.5pt">Δp₁ = −(w₁/(w₁+w₂))·(|p₁−p₂|−d)·n̂</div>
+      <svg viewBox="0 0 400 130" style="width:92%; margin:0.06in auto 0; display:block">
+        <line x1="80" y1="65" x2="320" y2="65" stroke="#b7bfce" stroke-width="3" stroke-dasharray="7 5"/>
+        <line x1="128" y1="65" x2="272" y2="65" stroke="#2563eb" stroke-width="4"/>
+        <circle cx="80"  cy="65" r="13" fill="#e5e9f0" stroke="#6b7280" stroke-width="2"/>
+        <circle cx="320" cy="65" r="13" fill="#e5e9f0" stroke="#6b7280" stroke-width="2"/>
+        <circle cx="128" cy="65" r="13" fill="#2563eb"/>
+        <circle cx="272" cy="65" r="13" fill="#2563eb"/>
+        <path d="M 105 45 L 125 58 M 105 45 l 3 12 M 105 45 l 13 1" stroke="#d97706" stroke-width="3" fill="none"/>
+        <path d="M 295 45 L 275 58 M 295 45 l -3 12 M 295 45 l -13 1" stroke="#d97706" stroke-width="3" fill="none"/>
+        <text x="200" y="105" fill="#6b7280" font-size="17" text-anchor="middle">늘어난 길이 → 원래 길이 d 로 서로 당겨 투영</text>
+      </svg>
+      <p class="dim" style="font-size:11pt; margin-top:0.08in">닫힌 형식(closed-form)의 국소 해 — 스프링 요소의 힘 계산·조립 과정이 필요 없다.</p>
+    </div>
+  </div>
+  <div class="footer"><span>Position Based Dynamics</span><span>4 / 9</span></div>
+</section>
+
+<!-- ================= 5. PBD LIMITATION ================= -->
+<section class="slide">
+  <h2>PBD의 한계 <span class="tag">강성(stiffness)이 물리량이 아니다</span></h2>
+  <ul>
+    <li>유연성은 보정량에 무차원 강성 계수 <span class="mono">k ∈ [0, 1]</span> 을 곱해서 표현: <span class="mono">Δp ← k·Δp</span></li>
+    <li>Gauss–Seidel 반복 n회를 거치면 실효 강성은 <span class="mono">1−(1−k)ⁿ</span> 으로 변함
+      <ul><li>논문의 보정식 <span class="mono">k′ = 1−(1−k)^(1/n)</span> 도 선형 근사일 뿐</li></ul>
+    </li>
+  </ul>
+  <div class="panel" style="margin-top:0.15in; border:2px solid var(--red)">
+    <h3 class="bad">결과적으로…</h3>
+    <ul>
+      <li>같은 <span class="mono">k</span> 라도 <b>반복 횟수·시간증분이 바뀌면 재료가 다르게 거동</b> — 수렴 검토(convergence study)가 성립하지 않음</li>
+      <li>반복을 늘릴수록 무한히 뻣뻣해짐 → 강성이 수치 파라미터에 종속</li>
+      <li><span class="mono">k</span> 는 영률·스프링 상수 같은 <b>재료 물성과 대응 불가</b> — 페널티법과 닮았지만 페널티 계수조차 물리 단위가 없는 셈</li>
+      <li>공학 해석 도구로 쓰기엔 치명적 — 파라미터 스터디가 무의미해짐</li>
+    </ul>
+  </div>
+  <p style="margin-top:0.18in">→ 이 문제를 정면으로 해결한 것이 <span class="acc2">XPBD (Macklin et al. 2016)</span></p>
+  <div class="footer"><span>Position Based Dynamics</span><span>5 / 9</span></div>
+</section>
+
+<!-- ================= 6. XPBD ================= -->
+<section class="slide">
+  <h2>XPBD <span class="tag">구속 동역학의 시간 이산화로 PBD를 재유도</span></h2>
+  <div class="cols">
+    <div class="col" style="flex:1.15; display:flex; flex-direction:column; justify-content:center">
+      <p style="font-size:12.5pt">구속을 강성 <span class="mono">k</span> 대신 <b>컴플라이언스(유연도) α = 1/k</b> 로 정의한
+        탄성 변형에너지 <span class="mono">U = (1/2)·Cᵀ·α⁻¹·C</span> 에서 출발, <b>후향 Euler(음해법)</b>로 이산화:</p>
+      <div class="eq" style="font-size:13.5pt">
+        <span class="lbl">각 구속의 라그랑주 승수 증분 (α̃ = α/Δt²)</span>
+        Δλ = (−C − α̃·λ) / (∇C·M⁻¹·∇Cᵀ + α̃)
+      </div>
+      <div class="eq" style="font-size:13.5pt">
+        <span class="lbl">위치 보정 및 승수 누적</span>
+        Δx = M⁻¹·∇Cᵀ·Δλ ,   λ ← λ + Δλ
+      </div>
+      <p class="dim" style="font-size:11pt">α = 0 극한이 순수 라그랑주 승수법(강체 구속) = PBD(k=1).
+        α &gt; 0 이면 <b>정칙화된(compliant) 구속</b> — 페널티법과 달리 강한 구속에서도 조건수가 악화되지 않는다.</p>
+    </div>
+    <div class="col panel" style="border:2px solid var(--accent2)">
+      <h3 class="acc2">FEM·다물체 동역학 관점에서의 의미</h3>
+      <ul>
+        <li>다물체 동역학의 <b>index-3 DAE</b>
+          (<span class="mono">M·ẍ = f + ∇Cᵀ·λ, C = 0</span>)를 시간 이산화 후 비선형 Gauss–Seidel로 푸는 것</li>
+        <li>강성이 <b>반복 횟수·Δt에 독립</b> → 반복을 늘리면 음해법의 정해로 수렴</li>
+        <li>α 는 재료 물성과 직접 대응 (거리 구속이면 α = 1/k<sub>spring</sub> [m/N])</li>
+        <li>누적된 λ 에서 <b>구속 반력을 직접 회수</b>: f<sub>c</sub> = ∇Cᵀ·λ/Δt²</li>
+      </ul>
+    </div>
+  </div>
+  <div class="footer"><span>Position Based Dynamics</span><span>6 / 9</span></div>
+</section>
+
+<!-- ================= 7. IMPLEMENTATION ================= -->
+<section class="slide">
+  <h2>구현 — PBD/XPBD Cloth Simulator</h2>
+  <div class="cols">
+    <div class="col">
+      <h3 style="font-size:14pt; margin-bottom:0.08in">천 = 절점(입자) + 거리 구속 3종 — 연속체 구성방정식 없이 이산 구속으로 직접 모델링</h3>
+      <svg viewBox="0 0 360 230" style="width:66%; display:block; margin:0 auto">
+        <g stroke="#2563eb" stroke-width="3">
+          <line x1="60" y1="45" x2="300" y2="45"/><line x1="60" y1="125" x2="300" y2="125"/><line x1="60" y1="205" x2="300" y2="205"/>
+          <line x1="60" y1="45" x2="60" y2="205"/><line x1="180" y1="45" x2="180" y2="205"/><line x1="300" y1="45" x2="300" y2="205"/>
+        </g>
+        <g stroke="#059669" stroke-width="2.5">
+          <line x1="60" y1="45" x2="180" y2="125"/><line x1="180" y1="45" x2="60" y2="125"/>
+          <line x1="180" y1="45" x2="300" y2="125"/><line x1="300" y1="45" x2="180" y2="125"/>
+          <line x1="60" y1="125" x2="180" y2="205"/><line x1="180" y1="125" x2="60" y2="205"/>
+          <line x1="180" y1="125" x2="300" y2="205"/><line x1="300" y1="125" x2="180" y2="205"/>
+        </g>
+        <g stroke="#d97706" stroke-width="2.5" stroke-dasharray="8 5">
+          <path d="M 60 45 Q 180 15 300 45" fill="none"/>
+          <path d="M 60 125 Q 180 95 300 125" fill="none"/>
+          <path d="M 60 45 Q 30 125 60 205" fill="none"/>
+        </g>
+        <g fill="#1f2430">
+          <circle cx="60" cy="45" r="8"/><circle cx="180" cy="45" r="8"/><circle cx="300" cy="45" r="8"/>
+          <circle cx="60" cy="125" r="8"/><circle cx="180" cy="125" r="8"/><circle cx="300" cy="125" r="8"/>
+          <circle cx="60" cy="205" r="8"/><circle cx="180" cy="205" r="8"/><circle cx="300" cy="205" r="8"/>
+        </g>
+      </svg>
+      <p class="caption" style="font-size:11pt; margin-top:0.12in">
+        <span style="color:#2563eb; font-weight:700">— 인장 (Stretch)</span> &nbsp;&nbsp;
+        <span style="color:#059669; font-weight:700">— 전단 (Shear)</span> &nbsp;&nbsp;
+        <span style="color:#d97706; font-weight:700">--- 굽힘 (Bend)</span>
+      </p>
+      <p class="caption">Müller 데모와 동일한 6개 거리 구속 패밀리 (인장 2 · 전단 2 · 굽힘 2)</p>
+    </div>
+    <div class="col panel">
+      <h3>솔버 구성 (두 논문을 그대로 구현)</h3>
+      <ul>
+        <li><code>PBDClothSimulationComponent</code> — 무차원 강성 k 방식</li>
+        <li><code>XPBDClothSimulationComponent</code> — 컴플라이언스 α + λ 누적 방식</li>
+        <li>60 Hz 고정 시간증분, <b>substep 10 × iteration 1</b>
+          <ul><li>같은 연산량이면 반복↑ 보다 Δt↓ 가 수렴에 유리 — "small steps" 접근 (Macklin 2019)</li></ul>
+        </li>
+        <li>접촉: 평면·구 충돌 + spatial hash 기반 자기접촉(self-contact)</li>
+        <li>런타임 UI에서 α, k, substep 등을 실시간 조정 → <b>두 솔버의 강성 거동 차이를 바로 비교 가능</b></li>
+      </ul>
+    </div>
+  </div>
+  <div class="footer"><span>Position Based Dynamics</span><span>7 / 9</span></div>
+</section>
+
+<!-- ================= 8. SUMMARY ================= -->
+<section class="slide">
+  <h2>정리</h2>
+  <table style="margin-bottom:0.22in">
+    <tr><th></th><th>힘 기반 (음해법 FEM 등)</th><th>PBD (2006)</th><th>XPBD (2016)</th></tr>
+    <tr><td>안정성</td><td>조건부 ~ 무조건</td><td class="good">무조건</td><td class="good">무조건</td></tr>
+    <tr><td>강성 파라미터</td><td class="good">재료 물성 (E, k)</td><td class="bad">무차원 k, 반복수·Δt 종속</td><td class="good">컴플라이언스 α = 1/k</td></tr>
+    <tr><td>구속 반력 회수</td><td class="good">가능</td><td class="bad">불가</td><td class="good">λ 로 직접 회수</td></tr>
+    <tr><td>계산 비용</td><td>전역 접선강성 선형계</td><td class="good">구속당 O(1) 국소 갱신, 병렬화 용이</td><td class="good">PBD와 거의 동일</td></tr>
+  </table>
+  <ul>
+    <li>PBD: 구속조건을 <b>위치 사영</b>으로 처리하는 무조건 안정 실시간 솔버 — 단, 강성이 수치 파라미터</li>
+    <li>XPBD: 같은 코드 구조를 유지한 채 <b>구속 동역학(DAE)의 후향 Euler 이산화</b>로 재유도 → 물리적으로 의미 있는 강성 + 구속 반력</li>
+    <li>정밀 FEM 해석의 대체제가 아니라, <b>실시간·상호작용 시뮬레이션 영역의 표준 기법</b>으로 이해하면 정확</li>
+  </ul>
+  <p class="dim" style="margin-top:0.15in">(라이브 데모: 천 잡아당기기, 구 발사, PBD ↔ XPBD 솔버 전환)</p>
+  <div class="footer"><span>Position Based Dynamics</span><span>8 / 9</span></div>
+</section>
+
+<!-- ================= 9. REFERENCES ================= -->
+<section class="slide">
+  <h2>References</h2>
+  <ul style="margin-top:0.08in">
+    <li style="margin-bottom:0.2in">
+      M. Müller, B. Heidelberger, M. Hennix, J. Ratcliff,<br>
+      <b>"Position Based Dynamics"</b>, VRIPhys 2006.<br>
+      <span class="mono dim" style="font-size:10.5pt">matthias-research.github.io/pages/publications/posBasedDyn.pdf</span>
+    </li>
+    <li style="margin-bottom:0.2in">
+      M. Macklin, M. Müller, N. Chentanez,<br>
+      <b>"XPBD: Position-Based Simulation of Compliant Constrained Dynamics"</b>, Motion in Games 2016.<br>
+      <span class="mono dim" style="font-size:10.5pt">matthias-research.github.io/pages/publications/XPBD.pdf</span>
+    </li>
+    <li>
+      구현 코드: <span class="mono dim" style="font-size:10.5pt">github.com/wkdgns135/Cloth-Simulation</span>
+    </li>
+  </ul>
+  <p class="dim" style="margin-top:auto; font-size:12pt">감사합니다 — Q&amp;A</p>
+  <div class="footer"><span>Position Based Dynamics</span><span>9 / 9</span></div>
+</section>
+
+</body>
+</html>
